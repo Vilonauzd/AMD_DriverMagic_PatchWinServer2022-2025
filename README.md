@@ -10,7 +10,7 @@
 
 ---
 
-## 📌 Overview
+##  Overview
 
 AMD does **not officially support** Windows Server for consumer Radeon drivers. This tool safely modifies AMD driver installation files (`*.inf` and manifests) to **trick the installer** into recognizing Windows Server 2022 and **Windows Server 2025 (GA Build 26100)** as valid targets—enabling full GPU acceleration, OpenCL, and display output on headless or workstation-class servers.
 
@@ -18,7 +18,7 @@ Built with **enterprise-grade safety**, **full revert capability**, and a **dark
 
 ---
 
-## ✅ Key Features
+##  Key Features
 
 | Feature | Description |
 |--------|-------------|
@@ -35,18 +35,18 @@ Built with **enterprise-grade safety**, **full revert capability**, and a **dark
 
 ---
 
-## 🛠️ Requirements
+##  Requirements
 
 - **OS**: Windows 10 / 11 / Server 2016+ (with .NET Framework 4.8+)
 - **PowerShell**: 5.1 or later (built into all supported Windows versions)
 - **Admin Rights**: Required (script enforces this via `#requires -RunAsAdministrator`)
 - **AMD Driver Package**: Extracted Adrenalin installer (e.g., `AMD-Software-Installer.exe` → extracted to folder)
 
-> 💡 **Tip**: Use 7-Zip or Universal Extractor to unpack the AMD installer `.exe`.
+>  **Tip**: Use 7-Zip or Universal Extractor to unpack the AMD installer `.exe`.
 
 ---
 
-## 📥 Installation & Usage
+##  Installation & Usage
 
 ### 1. **Prepare AMD Driver Folder**
 - Download official AMD Adrenalin driver (e.g., `amd-software-pro-24.5.1-win10-win11-64bit.exe`)
@@ -80,11 +80,11 @@ Then double-click `AMD-INF-Patcher.exe` (auto-elevates).
 4. Click **Patch INF**
 5. Run `setup.exe` from the patched folder
 
-> 🔄 Use **Revert All** anytime to undo changes.
+>  Use **Revert All** anytime to undo changes.
 
 ---
 
-## 🔒 Safety & Redundancy
+##  Safety & Redundancy
 
 - **Atomic Backups**: Every modified file is backed up as `original.bak_<timestamp>_<8-char-SHA256>`
 - **Session Isolation**: Each run uses a unique session ID (`yyyyMMdd_HHmmss`)
@@ -94,7 +94,7 @@ Then double-click `AMD-INF-Patcher.exe` (auto-elevates).
 
 ---
 
-## 🧪 Supported AMD Driver Structures
+##  Supported AMD Driver Structures
 
 The patcher automatically detects INF files in:
 - `\Display\WT6A_INF\`
@@ -114,7 +114,7 @@ Manifest files are detected by:
 
 ---
 
-## ⚠️ Disclaimer
+##  Disclaimer
 
 - This tool **modifies driver installation files only**—it does **not** alter the Windows kernel or AMD binaries.
 - Use at your own risk. Not affiliated with AMD or Microsoft.
@@ -123,7 +123,7 @@ Manifest files are detected by:
 
 ---
 
-## 📜 License
+##  License
 
 MIT License – Free for personal and commercial use.  
 *Community-built. Not endorsed by AMD.*
