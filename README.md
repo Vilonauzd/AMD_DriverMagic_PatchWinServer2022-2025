@@ -63,7 +63,7 @@ cd "G:\AMD_DriverMagic_PatchWinServer2022-2025"
 ```
 
 #### Option B: Standalone EXE (Recommended)
-Compile once, run anywhere:
+
 ```powershell
 Downloade .exe version and run as admin...
 ```
