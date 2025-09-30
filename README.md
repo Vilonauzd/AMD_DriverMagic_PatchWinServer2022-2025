@@ -1,0 +1,1 @@
+# AMD_DriverMagic_PatchWinServer2022-2025
