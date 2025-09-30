@@ -1,6 +1,8 @@
 # AMD_DriverMagic_PatchWinServer2022-2025
 
 <img width="852" height="692" alt="image" src="https://github.com/user-attachments/assets/f44bc8fb-3b4f-43a0-8c54-5c9aaaaf62ee" />
+
+
 # AMD INF Patcher – Windows Server 2025 Ready
 
 > **Unlock AMD GPU driver support on Windows Server 2022 & 2025**  
