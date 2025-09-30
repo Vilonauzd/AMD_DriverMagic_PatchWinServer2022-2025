@@ -65,11 +65,7 @@ cd "G:\AMD_DriverMagic_PatchWinServer2022-2025"
 #### Option B: Standalone EXE (Recommended)
 Compile once, run anywhere:
 ```powershell
-# Install ps2exe (one-time)
-Install-Module -Name ps2exe -Force
-
-# Build EXE
-Invoke-PS2EXE -InputFile "AMD-INF-Patcher.ps1" -OutputFile "AMD-INF-Patcher.exe" -RequireAdmin -NoConsole -IconType Information
+Downloade .exe version and run as admin...
 ```
 Then double-click `AMD-INF-Patcher.exe` (auto-elevates).
 
