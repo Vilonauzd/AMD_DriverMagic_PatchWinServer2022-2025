@@ -114,7 +114,8 @@ Manifest files are detected by:
 - Some features (e.g., Radeon Anti-Lag, Boost) may not function on Server SKUs.
 
 ---
-
+###  Tags
+`AMD` `Radeon` `Windows-Server-2025` `INF-Patcher` `GPU-Driver` `PowerShell` `WPF` `Homelab` `Server-GPU` `Build-26100`
 ##  License
 
 MIT License – Free for personal and commercial use.  
@@ -135,4 +136,7 @@ MIT License – Free for personal and commercial use.
 **`AMD-INF-Patcher.ps1` – Because your EPYC deserves Radeon power.** 💥
 
 https://github.com/user-attachments/assets/d86f150e-2bdc-4a9c-ad5d-4f6dffeaf94c
+
+<!-- Keywords for SEO and discoverability -->
+<!-- AMD, Radeon, Windows Server 2025, Windows Server 2022, INF patcher, GPU driver, Adrenalin driver, PowerShell GUI, WPF, Server GPU, headless GPU, OpenCL, DirectX on Server, AMD driver hack, driver modification, NTamd64, build 26100, PowerShell script, ps2exe, standalone EXE, driver compatibility, Windows Server graphics, Radeon on Server, EPYC GPU, homelab, AI server, machine learning GPU, Windows Server display driver, WT6A_INF, INF editing, revertable patch, backup restore, dark theme GUI, red terminal, PowerShell 5.1, .NET Framework 4.8, system administration, DevOps, virtualization, GPU passthrough, workstation GPU on server -->
 
