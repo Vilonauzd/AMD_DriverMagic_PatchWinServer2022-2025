@@ -1,62 +1,74 @@
-﻿#Requires -RunAsAdministrator
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-# ------------------------------------------------------------
-# AMD INF Patcher – GUI Edition (v2.0)
-# Supports Windows Server 2025 (build 26100)
-# ------------------------------------------------------------
+﻿#requires -RunAsAdministrator
+<# 
+    AMD INF Patcher – WPF Edition (v2.3)
+    Fully compatible with Windows Server 2025 (GA Build 26100)
+    PowerShell 5+ / .NET Framework 4.8
+    © AMD_DriverMagic | Reddit Community
+#>
 
 param(
     [string]$InitialRootPath = ''
 )
 
-# ---------------- Global Config ----------------
-$script:LogLines = [System.Collections.ArrayList]::new()
-$script:CurrentLogPath = $null
-$script:SessionID = (Get-Date -Format 'yyyyMMdd_HHmmss')
-$script:BackupBase = "C:\RepairLogs"
-$script:ValidTargets = @{
-    'Generic'      = 'NTamd64'
-    'Server2022'   = 'NTamd64.10.0...20348'
-    'Win11_24H2'   = 'NTamd64.10.0...26100'
-    'Server2025'   = 'NTamd64.10.0...26100'  # ✅ GA Build
-    'Custom'       = $null
-}
+#region ==================== Global State & Constants ====================
+$script:LogLines      = [System.Collections.ArrayList]::new()
+$script:CurrentLogPath= $null
+$script:SessionID     = (Get-Date -Format 'yyyyMMdd_HHmmss')
+$script:BackupBase    = "C:\RepairLogs"
+$script:txtLogControl = $null
 
-# ---------------- Helper Functions ----------------
+$ValidTargets = @{
+    'Generic'    = 'NTamd64'
+    'Server2022' = 'NTamd64.10.0...20348'
+    'Win11_24H2' = 'NTamd64.10.0...26100'
+    'Server2025' = 'NTamd64.10.0...26100'   # ✅ Windows Server 2025 GA
+    'Custom'     = $null
+}
+#endregion ====================================================================
+
+#region ==================== Logging Functions ============================
 function Write-Log {
-    param([string]$Message, [string]$Level = 'Info')
-    $time = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    $logEntry = "[$time] [$Level] $Message"
-    [void]$script:LogLines.Add($logEntry)
-    if ($script:MainForm -and $script:MainForm.txtLog) {
-        $script:MainForm.txtLog.AppendText("$logEntry`r`n")
-        $script:MainForm.txtLog.SelectionStart = $script:MainForm.txtLog.Text.Length
-        $script:MainForm.txtLog.ScrollToCaret()
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet('Info','Success','Warning','Error')][string]$Level='Info'
+    )
+    $timeStamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $entry     = "[$timeStamp] [$Level] $Message"
+    [void]$script:LogLines.Add($entry)
+
+    # Thread-safe WPF UI update
+    if ($script:txtLogControl -and $script:txtLogControl.IsInitialized) {
+        $action = {
+            $paragraph = New-Object System.Windows.Documents.Paragraph
+            $run = New-Object System.Windows.Documents.Run($entry)
+            $paragraph.Inlines.Add($run)
+            $script:txtLogControl.Document.Blocks.Add($paragraph)
+            $script:txtLogControl.ScrollToEnd()
+        }
+        if ($script:txtLogControl.Dispatcher.CheckAccess()) { & $action } else { $script:txtLogControl.Dispatcher.Invoke($action) }
     }
+
     if ($script:CurrentLogPath) {
-        Add-Content -Path $script:CurrentLogPath -Value $logEntry -ErrorAction SilentlyContinue
+        try { Add-Content -Path $script:CurrentLogPath -Value $entry -ErrorAction Stop } catch {}
     }
 }
+#endregion ====================================================================
 
+#region ==================== Dependency Checks ===========================
 function Ensure-Dependencies {
     Write-Log "Checking system dependencies..." "Info"
-    
-    # PowerShell version
+
     if ($PSVersionTable.PSVersion.Major -lt 5) {
-        Write-Log "PowerShell 5.1+ required. Current: $($PSVersionTable.PSVersion)" "Error"
+        Write-Log "PowerShell 5.1 or later is required." "Error"
         return $false
     }
 
-    # Admin rights
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) {
         Write-Log "Administrator privileges required." "Error"
         return $false
     }
 
-    # RepairLogs folder
     if (-not (Test-Path $script:BackupBase)) {
         try {
             New-Item -ItemType Directory -Path $script:BackupBase -Force | Out-Null
@@ -70,17 +82,16 @@ function Ensure-Dependencies {
     Write-Log "All dependencies satisfied." "Success"
     return $true
 }
+#endregion ====================================================================
 
+#region ==================== Backup / Revert Utilities ====================
 function Backup-File {
-    param([string]$FilePath)
-    try {
-        $hash = (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash.Substring(0,8)
-        $backupName = "$FilePath.bak_$($script:SessionID)_$hash"
-        Copy-Item -LiteralPath $FilePath -Destination $backupName -Force
-        return $backupName
-    } catch {
-        throw "Backup failed for $FilePath : $_"
-    }
+    param([Parameter(Mandatory)][string]$FilePath)
+    if (-not (Test-Path -LiteralPath $FilePath)) { throw "File not found: $FilePath" }
+    $hash = (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash.Substring(0,8)
+    $backupName = "$FilePath.bak_$($script:SessionID)_$hash"
+    Copy-Item -LiteralPath $FilePath -Destination $backupName -Force
+    return $backupName
 }
 
 function Revert-AllChanges {
@@ -89,71 +100,69 @@ function Revert-AllChanges {
     $reverted = 0
 
     foreach ($log in $logFiles) {
-        $pattern = [regex]::Escape(".bak_$($log.BaseName.Split('_')[-2])_")
-        $backups = Get-ChildItem -Path "$script:BackupBase\*" -Include "*.bak_*" -Recurse -ErrorAction SilentlyContinue |
-                   Where-Object { $_.Name -match $pattern }
+        if ($log.BaseName -match 'amd_inf_patch_(\d{8}_\d{6})') {
+            $sessionID = $matches[1]
+            $pattern   = [regex]::Escape(".bak_$sessionID`_")
+            $backups   = Get-ChildItem -Path "$script:BackupBase\*" -Include "*.bak_*" -Recurse |
+                         Where-Object { $_.Name -match $pattern }
 
-        foreach ($bak in $backups) {
-            $orig = $bak.FullName -replace "\.bak_$($log.BaseName.Split('_')[-2])_[0-9a-f]{8}", ""
-            try {
-                if (Test-Path $orig) { Remove-Item -LiteralPath $orig -Force }
-                Move-Item -LiteralPath $bak.FullName -Destination $orig -Force
-                Write-Log "Reverted: $orig" "Success"
-                $reverted++
-            } catch {
-                Write-Log "Revert failed for $orig : $_" "Error"
+            foreach ($bak in $backups) {
+                $orig = $bak.FullName -replace [regex]::Escape(".bak_$sessionID`_") + '[0-9a-f]{8}', ''
+                try {
+                    if (Test-Path $orig) { Remove-Item -LiteralPath $orig -Force }
+                    Move-Item -LiteralPath $bak.FullName -Destination $orig -Force
+                    Write-Log "Reverted: $orig" "Success"
+                    $reverted++
+                } catch {
+                    Write-Log "Revert failed for $orig : $_" "Error"
+                }
             }
         }
     }
 
-    if ($reverted -eq 0) {
-        Write-Log "No revertable backups found." "Info"
-    } else {
-        Write-Log "Reverted $reverted file(s)." "Success"
-    }
+    if ($reverted -eq 0) { Write-Log "No revertable backups found." "Info" }
+    else               { Write-Log "Reverted $reverted file(s)." "Success" }
 }
+#endregion ====================================================================
 
+#region ==================== Core Patching Logic =========================
 function Patch-INFAndManifests {
     param(
-        [string]$Root,
-        [string]$Target,
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][ValidateSet('Generic','Server2022','Win11_24H2','Server2025','Custom')][string]$Target,
         [string]$CustomDecoration,
         [bool]$PatchManifest
     )
 
-    # Resolve decoration
     if ($Target -eq 'Custom') {
         if ([string]::IsNullOrWhiteSpace($CustomDecoration)) {
-            Write-Log "Custom target requires Decoration value." "Error"
+            Write-Log "Custom target requires a decoration string." "Error"
             return
         }
-        $dec = $CustomDecoration
+        $decoration = $CustomDecoration
     } else {
-        $dec = $script:ValidTargets[$Target]
+        $decoration = $ValidTargets[$Target]
     }
 
-    Write-Log "Using decoration: $dec" "Info"
+    Write-Log "Using decoration: $decoration" "Info"
     $script:CurrentLogPath = Join-Path $script:BackupBase "amd_inf_patch_$($script:SessionID).log"
     Write-Log "Session log: $($script:CurrentLogPath)" "Info"
 
-    # Find INF files
     $infFiles = Get-ChildItem -Path $Root -Recurse -Filter *.inf -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -match '\\Display\\WT6A_INF\\' -or $_.DirectoryName -match 'WT6A_INF' -or $_.Name -match '^u\d+\.inf$' }
+                Where-Object {
+                    $_.FullName -match '\\Display\\WT6A_INF\\' -or
+                    $_.DirectoryName -match 'WT6A_INF' -or
+                    $_.Name -match '^u\d+\.inf$'
+                }
 
-    if (-not $infFiles) {
-        Write-Log "No INF files found in $Root matching criteria." "Warning"
-    } else {
+    if (-not $infFiles) { Write-Log "No INF files found in $Root matching criteria." "Warning" }
+    else {
         foreach ($inf in $infFiles) {
             try {
                 $content = Get-Content -LiteralPath $inf.FullName -Raw -ErrorAction Stop
                 $original = $content
-
-                # Patch Manufacturer lines
-                $content = [regex]::Replace($content, '(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*', $dec)
-
-                # Patch section headers
-                $content = [regex]::Replace($content, '(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*', "[ATI.Mfg.$dec]`r`n")
-
+                $content = [regex]::Replace($content, '(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*', $decoration)
+                $content = [regex]::Replace($content, '(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*', "[ATI.Mfg.$decoration`r`n")
                 if ($content -ne $original) {
                     $bak = Backup-File -FilePath $inf.FullName
                     Set-Content -LiteralPath $inf.FullName -Value $content -Encoding ASCII -ErrorAction Stop
@@ -167,20 +176,20 @@ function Patch-INFAndManifests {
         }
     }
 
-    # Patch manifests if requested
     if ($PatchManifest) {
-        $manifests = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue |
-                     Where-Object { $_.Name -match '(?i)(InstallManifest\.json|AppInstallerManifest\.xml|manifest\.json)' -or $_.DirectoryName -match 'Bin64' }
+        $manifestFiles = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue |
+                         Where-Object {
+                             $_.Name -match '(?i)(InstallManifest\.json|AppInstallerManifest\.xml|manifest\.json)' -or
+                             $_.DirectoryName -match 'Bin64'
+                         }
 
-        foreach ($m in $manifests) {
+        foreach ($m in $manifestFiles) {
             try {
                 $txt = Get-Content -LiteralPath $m.FullName -Raw -ErrorAction Stop
                 $orig = $txt
-
-                $txt = [regex]::Replace($txt, '(?i)"(Min(?:OS|Build|Version|OSVersion|OSBuild))"\s*:\s*"(.*?)"', '"$1":"10.0.0.0"')
-                $txt = [regex]::Replace($txt, '(?i)"(Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested))"\s*:\s*"(.*?)"', '"$1":"10.0.99999.0"')
+                $txt = [regex]::Replace($txt, '(?i)"(Min(?:OS|Build|Version|OSVersion|OSBuild))"\s*:\s*".+?"', '"$1":"10.0.0.0"')
+                $txt = [regex]::Replace($txt, '(?i)"(Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested))"\s*:\s*".+?"', '"$1":"10.0.99999.0"')
                 $txt = [regex]::Replace($txt, '(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]', '"SupportedOS":[$1,"WindowsServer"]')
-
                 if ($txt -ne $orig) {
                     $bak = Backup-File -FilePath $m.FullName
                     Set-Content -LiteralPath $m.FullName -Value $txt -Encoding UTF8 -ErrorAction Stop
@@ -196,195 +205,284 @@ function Patch-INFAndManifests {
 
     Write-Log "Patching completed." "Success"
 }
+#endregion ====================================================================
 
-# ---------------- GUI Setup ----------------
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "AMD INF Patcher (Server 2025 Ready)"
-$form.Size = New-Object System.Drawing.Size(800, 600)
-$form.StartPosition = "CenterScreen"
-$form.MaximizeBox = $false
-$form.MinimizeBox = $false
-$form.Icon = [System.Drawing.SystemIcons]::Information
+#region ==================== WPF UI Definition ===========================
+$Xaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AMD INF Patcher (Server 2025 Ready)"
+        Width="860" Height="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF000000"
+        FontFamily="Consolas"
+        AllowsTransparency="False"
+        WindowStyle="SingleBorderWindow">
+    <Grid Margin="10">
+        <Border Background="#FF0A0A0A"
+                CornerRadius="6"
+                BorderBrush="#FF330000"
+                BorderThickness="1"
+                Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="5*"/> <!-- 5x taller log -->
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-# Root Path
-$lblRoot = New-Object System.Windows.Forms.Label
-$lblRoot.Location = New-Object System.Drawing.Point(20, 20)
-$lblRoot.Size = New-Object System.Drawing.Size(120, 20)
-$lblRoot.Text = "Driver Root Folder:"
-$form.Controls.Add($lblRoot)
+                <TextBlock Grid.Row="0" Text="AMD INF PATCHER"
+                           Foreground="#FFFF0000"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,10"/>
 
-$txtRoot = New-Object System.Windows.Forms.TextBox
-$txtRoot.Location = New-Object System.Drawing.Point(150, 20)
-$txtRoot.Size = New-Object System.Drawing.Size(400, 20)
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="Driver Root:" Foreground="#FFFF4444" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtRoot" Width="500" Height="26" Margin="10,0,0,0"
+                             Background="#FF111111" Foreground="#FFFF4444" BorderBrush="#FF330000"/>
+                    <Button x:Name="btnBrowse" Content="Browse..." Width="80" Height="26" Margin="10,0,0,0"
+                            Background="#FF220000" Foreground="#FFFFFFFF"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,15">
+                    <TextBlock Text="Target OS:" Foreground="#FFFF4444" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cboTarget" Width="180" Height="26" Margin="10,0,0,0"
+                              Background="#FF111111" Foreground="#FFFF4444" BorderBrush="#FF330000">
+                        <ComboBoxItem Content="Generic"/>
+                        <ComboBoxItem Content="Server2022"/>
+                        <ComboBoxItem Content="Win11_24H2"/>
+                        <ComboBoxItem Content="Server2025" IsSelected="True"/>
+                        <ComboBoxItem Content="Custom"/>
+                    </ComboBox>
+                    <TextBox x:Name="txtCustom" Width="250" Height="26" Margin="10,0,0,0"
+                             Text="e.g., NTamd64.10.0...26100"
+                             IsEnabled="False"
+                             Background="#FF111111" Foreground="#FF888888"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Orientation="Vertical" Margin="0,0,0,10">
+                    <CheckBox x:Name="chkManifest" Content="Patch Adrenalin Manifest (Best Effort)"
+                              IsChecked="True" Foreground="#FFFF6666"/>
+                    <WrapPanel HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <Button x:Name="btnPatch" Content="Patch INF" Width="100" Height="30" Margin="5,0"
+                                Background="#FF330000" Foreground="#FFFFFFFF"/>
+                        <Button x:Name="btnRevert" Content="Revert All" Width="100" Height="30" Margin="5,0"
+                                Background="#FF440000" Foreground="#FFFFFFFF"/>
+                        <Button x:Name="btnCheckDeps" Content="Check Dependencies" Width="150" Height="30" Margin="5,0"
+                                Background="#FF220000" Foreground="#FFFFFFFF"/>
+                    </WrapPanel>
+                </StackPanel>
+
+                <RichTextBox Grid.Row="4" x:Name="txtLog"
+                             Background="#FF000000"
+                             Foreground="#FFFF0000"
+                             FontSize="12"
+                             IsReadOnly="True"
+                             VerticalScrollBarVisibility="Auto"
+                             BorderBrush="#FF330000"
+                             BorderThickness="1"/>
+
+                <TextBlock Grid.Row="5" Text="By AMD_DriverMagic | Reddit Community"
+                           HorizontalAlignment="Center"
+                           Foreground="#FF555555"
+                           FontSize="10"
+                           Margin="0,10,0,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+'@
+#endregion ====================================================================
+
+#region ==================== Load XAML & Wire Events =====================
+Add-Type -AssemblyName PresentationFramework, WindowsBase, System.Windows.Forms
+
+$reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($Xaml))
+$window = [Windows.Markup.XamlReader]::Load($reader)
+
+$txtRoot      = $window.FindName('txtRoot')
+$btnBrowse    = $window.FindName('btnBrowse')
+$cboTarget    = $window.FindName('cboTarget')
+$txtCustom    = $window.FindName('txtCustom')
+$chkManifest  = $window.FindName('chkManifest')
+$btnPatch     = $window.FindName('btnPatch')
+$btnRevert    = $window.FindName('btnRevert')
+$btnCheckDeps = $window.FindName('btnCheckDeps')
+$txtLog       = $window.FindName('txtLog')
+
+$script:txtLogControl = $txtLog
 $txtRoot.Text = $InitialRootPath
-$form.Controls.Add($txtRoot)
 
-$btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Location = New-Object System.Drawing.Point(560, 18)
-$btnBrowse.Size = New-Object System.Drawing.Size(80, 23)
-$btnBrowse.Text = "Browse..."
+# Browse button
 $btnBrowse.Add_Click({
-    $fd = New-Object System.Windows.Forms.FolderBrowserDialog
-    $fd.Description = "Select AMD Driver Root Folder"
-    if ($fd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-        $txtRoot.Text = $fd.SelectedPath
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = "Select AMD Driver Root Folder"
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $txtRoot.Text = $dlg.SelectedPath
     }
 })
-$form.Controls.Add($btnBrowse)
 
-# Target OS
-$lblTarget = New-Object System.Windows.Forms.Label
-$lblTarget.Location = New-Object System.Drawing.Point(20, 50)
-$lblTarget.Size = New-Object System.Drawing.Size(120, 20)
-$lblTarget.Text = "Target OS:"
-$form.Controls.Add($lblTarget)
-
-$cboTarget = New-Object System.Windows.Forms.ComboBox
-$cboTarget.Location = New-Object System.Drawing.Point(150, 50)
-$cboTarget.Size = New-Object System.Drawing.Size(200, 20)
-$cboTarget.DropDownStyle = "DropDownList"
-@('Generic','Server2022','Win11_24H2','Server2025','Custom') | ForEach-Object { [void]$cboTarget.Items.Add($_) }
-$cboTarget.SelectedIndex = 3  # Default to Server2025
-$form.Controls.Add($cboTarget)
-
-$txtCustom = New-Object System.Windows.Forms.TextBox
-$txtCustom.Location = New-Object System.Drawing.Point(360, 50)
-$txtCustom.Size = New-Object System.Drawing.Size(200, 20)
-$txtCustom.Enabled = $false
-$txtCustom.PlaceholderText = "e.g., NTamd64.10.0...26100"
-$form.Controls.Add($txtCustom)
-
-$cboTarget.Add_SelectedValueChanged({
-    $txtCustom.Enabled = ($cboTarget.SelectedItem -eq 'Custom')
+# Target selection
+$cboTarget.Add_SelectionChanged({
+    $isCustom = ($cboTarget.SelectedItem.Content -eq 'Custom')
+    $txtCustom.IsEnabled = $isCustom
+    if (-not $isCustom) {
+        $txtCustom.Text = "e.g., NTamd64.10.0...26100"
+        $txtCustom.Foreground = [System.Windows.Media.Brushes]::LightGray
+    } else {
+        $txtCustom.Text = ''
+        $txtCustom.Foreground = [System.Windows.Media.Brushes]::White
+    }
 })
 
-# Options
-$chkManifest = New-Object System.Windows.Forms.CheckBox
-$chkManifest.Location = New-Object System.Drawing.Point(150, 80)
-$chkManifest.Size = New-Object System.Drawing.Size(250, 20)
-$chkManifest.Text = "Patch Adrenalin Manifest (Best Effort)"
-$chkManifest.Checked = $true
-$form.Controls.Add($chkManifest)
+# Custom textbox placeholder logic (using proper WPF events)
+$txtCustom.AddHandler([System.Windows.UIElement]::GotFocusEvent, [System.Windows.RoutedEventHandler]{
+    param($sender, $e)
+    if ($txtCustom.Text -eq "e.g., NTamd64.10.0...26100") {
+        $txtCustom.Text = ""
+        $txtCustom.Foreground = [System.Windows.Media.Brushes]::White
+    }
+})
+
+$txtCustom.AddHandler([System.Windows.UIElement]::LostFocusEvent, [System.Windows.RoutedEventHandler]{
+    param($sender, $e)
+    if ([string]::IsNullOrWhiteSpace($txtCustom.Text)) {
+        $txtCustom.Text = "e.g., NTamd64.10.0...26100"
+        $txtCustom.Foreground = [System.Windows.Media.Brushes]::LightGray
+    }
+})
 
 # Buttons
-$btnPatch = New-Object System.Windows.Forms.Button
-$btnPatch.Location = New-Object System.Drawing.Point(150, 110)
-$btnPatch.Size = New-Object System.Drawing.Size(100, 30)
-$btnPatch.Text = "Patch INF"
-$btnPatch.Add_Click({
-    if ([string]::IsNullOrWhiteSpace($txtRoot.Text) -or -not (Test-Path $txtRoot.Text)) {
-        [System.Windows.Forms.MessageBox]::Show("Invalid driver root path.", "Error", "OK", "Error")
-        return
-    }
-    if ($cboTarget.SelectedItem -eq 'Custom' -and [string]::IsNullOrWhiteSpace($txtCustom.Text)) {
-        [System.Windows.Forms.MessageBox]::Show("Custom decoration required.", "Error", "OK", "Error")
-        return
-    }
-    $form.Enabled = $false
-    Start-Job -ScriptBlock {
-        # Re-import functions (jobs are isolated)
-        $functions = @'
-function Write-Log { param([string]$Message, [string]$Level = 'Info') { Write-Output @{Time=(Get-Date); Level=$Level; Message=$Message} } }
-function Backup-File { param([string]$FilePath) { $hash = (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash.Substring(0,8); $b = "$FilePath.bak_$using:SessionID`_$hash"; Copy-Item $FilePath $b -Force; return $b } }
-'@
-        . ([ScriptBlock]::Create($functions))
-        # Now call main logic
-        try {
-            Patch-INFAndManifests -Root $using:txtRoot.Text -Target $using:cboTarget.SelectedItem -CustomDecoration $using:txtCustom.Text -PatchManifest $using:chkManifest.Checked
-        } catch {
-            Write-Log "Fatal error: $_" "Error"
-        }
-    } | Out-Null
-
-    # Monitor job in background
-    $timer = New-Object System.Windows.Forms.Timer
-    $timer.Interval = 500
-    $timer.Add_Tick({
-        $job = Get-Job | Where-Object { $_.State -eq 'Completed' -or $_.State -eq 'Failed' }
-        if ($job) {
-            $results = Receive-Job $job
-            Remove-Job $job
-            foreach ($r in $results) {
-                if ($r -is [hashtable]) {
-                    $script:MainForm.txtLog.AppendText("[$($r.Time)] [$($r.Level)] $($r.Message)`r`n")
-                }
-            }
-            $timer.Stop()
-            $form.Enabled = $true
-            [System.Windows.Forms.MessageBox]::Show("Patching complete. Check logs.", "Done", "OK", "Information")
-        }
-    })
-    $timer.Start()
-})
-$form.Controls.Add($btnPatch)
-
-$btnRevert = New-Object System.Windows.Forms.Button
-$btnRevert.Location = New-Object System.Drawing.Point(260, 110)
-$btnRevert.Size = New-Object System.Drawing.Size(100, 30)
-$btnRevert.Text = "Revert All"
-$btnRevert.Add_Click({
-    $form.Enabled = $false
-    Start-Job -ScriptBlock {
-        try {
-            Revert-AllChanges
-        } catch {
-            Write-Log "Revert error: $_" "Error"
-        }
-    } | Out-Null
-
-    $timer = New-Object System.Windows.Forms.Timer
-    $timer.Interval = 500
-    $timer.Add_Tick({
-        $job = Get-Job | Where-Object { $_.State -eq 'Completed' }
-        if ($job) {
-            $results = Receive-Job $job
-            Remove-Job $job
-            foreach ($r in $results) {
-                if ($r -is [hashtable]) {
-                    $script:MainForm.txtLog.AppendText("[$($r.Time)] [$($r.Level)] $($r.Message)`r`n")
-                }
-            }
-            $timer.Stop()
-            $form.Enabled = $true
-            [System.Windows.Forms.MessageBox]::Show("Revert complete.", "Done", "OK", "Information")
-        }
-    })
-    $timer.Start()
-})
-$form.Controls.Add($btnRevert)
-
-$btnCheckDeps = New-Object System.Windows.Forms.Button
-$btnCheckDeps.Location = New-Object System.Drawing.Point(370, 110)
-$btnCheckDeps.Size = New-Object System.Drawing.Size(120, 30)
-$btnCheckDeps.Text = "Check Dependencies"
 $btnCheckDeps.Add_Click({
     if (Ensure-Dependencies) {
-        [System.Windows.Forms.MessageBox]::Show("All dependencies OK.", "Success", "OK", "Information")
+        [System.Windows.MessageBox]::Show('All dependencies OK.', 'Success', 'OK', 'Information') | Out-Null
     } else {
-        [System.Windows.Forms.MessageBox]::Show("Dependency check failed. See log.", "Error", "OK", "Error")
+        [System.Windows.MessageBox]::Show('Dependency check failed. See log.', 'Error', 'OK', 'Error') | Out-Null
     }
 })
-$form.Controls.Add($btnCheckDeps)
 
-# Log Box
-$txtLog = New-Object System.Windows.Forms.RichTextBox
-$txtLog.Location = New-Object System.Drawing.Point(20, 150)
-$txtLog.Size = New-Object System.Drawing.Size(750, 380)
-$txtLog.ReadOnly = $true
-$txtLog.Font = New-Object System.Drawing.Font("Consolas", 9)
-$txtLog.ScrollBars = "Vertical"
-$form.Controls.Add($txtLog)
+$btnPatch.Add_Click({
+    if ([string]::IsNullOrWhiteSpace($txtRoot.Text) -or -not (Test-Path $txtRoot.Text)) {
+        [System.Windows.MessageBox]::Show('Invalid driver root path.', 'Error', 'OK', 'Error') | Out-Null
+        return
+    }
+    $target = $cboTarget.SelectedItem.Content
+    if ($target -eq 'Custom' -and ([string]::IsNullOrWhiteSpace($txtCustom.Text) -or $txtCustom.Text -like '*e.g.,*')) {
+        [System.Windows.MessageBox]::Show('Please enter a custom decoration.', 'Error', 'OK', 'Error') | Out-Null
+        return
+    }
+    $customDec = if ($target -eq 'Custom') { $txtCustom.Text } else { '' }
 
-# Assign to script scope for logging
-$script:MainForm = $form
-$script:MainForm.txtLog = $txtLog
+    $window.IsEnabled = $false
 
-# Initial log
+    Start-Job -ScriptBlock {
+        param($Root,$Target,$CustomDec,$PatchMan,$SessionID,$BackupBase)
+        function Write-LogLocal { param($Msg,$Lvl='Info'); Write-Output @{Message=$Msg;Level=$Lvl} }
+        function Backup-FileLocal { param($FP); $h=(Get-FileHash $FP -Algorithm SHA256).Hash.Substring(0,8); $b="$FP.bak_$SessionID`_$h"; Copy-Item $FP $b -Force; $b }
+        $map=@{Generic='NTamd64';Server2022='NTamd64.10.0...20348';Win11_24H2='NTamd64.10.0...26100';Server2025='NTamd64.10.0...26100'}
+        $dec = if($Target -eq 'Custom'){$CustomDec}else{$map[$Target]}
+        Write-LogLocal "Patching with: $dec"
+
+        $infFiles = Get-ChildItem -Path $Root -Recurse -Filter *.inf -EA 0 | Where-Object { $_.FullName -match '\\Display\\WT6A_INF\\' -or $_.DirectoryName -match 'WT6A_INF' -or $_.Name -match '^u\d+\.inf$' }
+        foreach ($inf in $infFiles) {
+            try {
+                $txt = Get-Content -Raw -LiteralPath $inf.FullName
+                $orig=$txt
+                $txt=[regex]::Replace($txt,'(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*',$dec)
+                $txt=[regex]::Replace($txt,'(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*',"[ATI.Mfg.$dec`r`n")
+                if ($txt -ne $orig){
+                    $bak=Backup-FileLocal -FP $inf.FullName
+                    Set-Content -LiteralPath $inf.FullName -Value $txt -Encoding ASCII
+                    Write-LogLocal "Patched INF: $($inf.FullName)"
+                }
+            } catch { Write-LogLocal "INF error: $_" "Error" }
+        }
+
+        if ($PatchMan) {
+            $manifests = Get-ChildItem -Path $Root -Recurse -File -EA 0 | Where-Object { $_.Name -match '(?i)(InstallManifest\.json|AppInstallerManifest\.xml|manifest\.json)' -or $_.DirectoryName -match 'Bin64' }
+            foreach ($m in $manifests) {
+                try {
+                    $txt = Get-Content -Raw -LiteralPath $m.FullName
+                    $orig=$txt
+                    $txt=[regex]::Replace($txt,'(?i)"Min(?:OS|Build|Version|OSVersion|OSBuild)"\s*:\s*".+?"','"MinOS":"10.0.0.0"')
+                    $txt=[regex]::Replace($txt,'(?i)"Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested)"\s*:\s*".+?"','"MaxOS":"10.0.99999.0"')
+                    $txt=[regex]::Replace($txt,'(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]','"SupportedOS":[$1,"WindowsServer"]')
+                    if ($txt -ne $orig){
+                        $bak=Backup-FileLocal -FP $m.FullName
+                        Set-Content -LiteralPath $m.FullName -Value $txt -Encoding UTF8
+                        Write-LogLocal "Patched manifest: $($m.FullName)"
+                    }
+                } catch { Write-LogLocal "Manifest error: $_" "Error" }
+            }
+        }
+        Write-LogLocal "Patching completed."
+    } -ArgumentList $txtRoot.Text,$target,$customDec,$chkManifest.IsChecked,$script:SessionID,$script:BackupBase | Out-Null
+
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(500)
+    $timer.Add_Tick({
+        $job = Get-Job | Where-Object {$_.State -in 'Completed','Failed'}
+        if ($job) {
+            $results = Receive-Job $job
+            Remove-Job $job
+            foreach($r in $results){ if($r -is [hashtable]){ Write-Log $r.Message $r.Level } }
+            $timer.Stop()
+            $window.IsEnabled = $true
+            [System.Windows.MessageBox]::Show('Operation complete. Check logs.', 'Done', 'OK', 'Information') | Out-Null
+        }
+    })
+    $timer.Start()
+})
+
+$btnRevert.Add_Click({
+    $window.IsEnabled = $false
+    Start-Job -ScriptBlock {
+        param($BackupBase,$SessionID)
+        function Write-LogLocal { param($Msg,$Lvl='Info'); Write-Output @{Message=$Msg;Level=$Lvl} }
+        try {
+            $logFiles = Get-ChildItem -Path $BackupBase -Filter "*amd_inf_patch_*.log" -EA 0
+            $reverted=0
+            foreach($log in $logFiles){
+                if($log.BaseName -match 'amd_inf_patch_(\d{8}_\d{6})'){
+                    $sid=$matches[1]
+                    $backs = Get-ChildItem -Path "$BackupBase\*" -Include "*.bak_*" -Recurse -EA 0 |
+                             Where-Object {$_.Name -match [regex]::Escape(".bak_$sid`_")}
+                    foreach($b in $backs){
+                        $orig=$b.FullName -replace [regex]::Escape(".bak_$sid`_") + '[0-9a-f]{8}',''
+                        if(Test-Path $orig){ Remove-Item -LiteralPath $orig -Force }
+                        Move-Item -LiteralPath $b.FullName -Destination $orig -Force
+                        $reverted++
+                    }
+                }
+            }
+            Write-LogLocal "Reverted $reverted file(s)."
+        } catch { Write-LogLocal "Revert error: $_" "Error" }
+    } -ArgumentList $script:BackupBase,$script:SessionID | Out-Null
+
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(500)
+    $timer.Add_Tick({
+        $job = Get-Job | Where-Object {$_.State -eq 'Completed'}
+        if ($job) {
+            $results = Receive-Job $job
+            Remove-Job $job
+            foreach($r in $results){ if($r -is [hashtable]){ Write-Log $r.Message $r.Level } }
+            $timer.Stop()
+            $window.IsEnabled = $true
+            [System.Windows.MessageBox]::Show('Revert complete.', 'Done', 'OK', 'Information') | Out-Null
+        }
+    })
+    $timer.Start()
+})
+
 Write-Log "AMD INF Patcher GUI Loaded." "Info"
-Write-Log "Windows Server 2025 GA build: 26100" "Info"
 if (-not (Ensure-Dependencies)) {
-    [System.Windows.Forms.MessageBox]::Show("Critical dependency missing. App may not function.", "Warning", "OK", "Exclamation")
+    [System.Windows.MessageBox]::Show('Critical dependency missing. App may not function.', 'Warning', 'OK', 'Exclamation') | Out-Null
 }
 
-# Show Form
-[void]$form.ShowDialog()
+[void]$window.ShowDialog()
+#endregion ====================================================================
