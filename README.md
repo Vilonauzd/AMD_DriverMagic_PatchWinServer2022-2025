@@ -4,7 +4,7 @@
 
 
 # AMD INF Patcher – Windows Server 2025 Ready 
-**(09/29/25 - added experimental support for windows 7)**
+# **(09/29/25 - added experimental support for windows 7)**
 
 > **Unlock AMD GPU driver support on Windows Server 2022 & 2025**  
 > A resilient, GUI-powered PowerShell tool to patch AMD Adrenalin driver INF files for unsupported Windows Server editions.
