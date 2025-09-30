@@ -103,10 +103,6 @@ Manifest files are detected by:
 
 ---
 
-## 🖥️ GUI Preview
-
-![Dark red terminal-themed GUI with Server 2025 selected, log window showing live output](docs/screenshot.png)  
-*(Actual UI: black background, bright red text, 5× tall log pane)*
 
 ---
 
