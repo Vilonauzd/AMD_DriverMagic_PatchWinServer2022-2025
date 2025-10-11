@@ -1,7 +1,10 @@
 ﻿#requires -RunAsAdministrator
-<# 
-    AMD INF Patcher – WPF Edition (v2.4)
-    Fully compatible with Windows Server 2025 (GA Build 26100) + Experimental Windows 7 Support
+<#
+    AMD INF Patcher – WPF Edition (v2.5)
+    - Fix: Prevented dropped ']' on [ATI.Mfg.NTamd64...] headers
+    - Fix: Robust [Manufacturer] handling without null errors; additive update
+    - Add: Windows Server 2019 identifiers (NTamd64.10.0.2.17763 / .3.17763)
+    - Hardened regex + explicit match checks + detailed logging
     PowerShell 5+ / .NET Framework 4.8
     © AMD_DriverMagic | Reddit Community
 #>
@@ -11,19 +14,22 @@ param(
 )
 
 #region ==================== Global State & Constants ====================
-$script:LogLines      = [System.Collections.ArrayList]::new()
-$script:CurrentLogPath= $null
-$script:SessionID     = (Get-Date -Format 'yyyyMMdd_HHmmss')
-$script:BackupBase    = "C:\RepairLogs"
-$script:txtLogControl = $null
+$script:LogLines       = [System.Collections.ArrayList]::new()
+$script:CurrentLogPath = $null
+$script:SessionID      = (Get-Date -Format 'yyyyMMdd_HHmmss')
+$script:BackupBase     = "C:\RepairLogs"
+$script:txtLogControl  = $null
 
+# NOTE: Added Server2019 variants per user report.
 $ValidTargets = @{
-    'Generic'    = 'NTamd64'
-    'Server2022' = 'NTamd64.10.0...20348'
-    'Win11_24H2' = 'NTamd64.10.0...26100'
-    'Server2025' = 'NTamd64.10.0...26100'   # ✅ Windows Server 2025 GA
-    'Win7'       = 'NTamd64.6.1...7601'     # ✅ Windows 7 SP1
-    'Custom'     = $null
+    'Generic'      = 'NTamd64'
+    'Server2019_2' = 'NTamd64.10.0.2.17763'  # ✅ Windows Server 2019 pattern 1
+    'Server2019_3' = 'NTamd64.10.0.3.17763'  # ✅ Windows Server 2019 pattern 2
+    'Server2022'   = 'NTamd64.10.0...20348'
+    'Win11_24H2'   = 'NTamd64.10.0...26100'
+    'Server2025'   = 'NTamd64.10.0...26100'  # ✅ Windows Server 2025 GA
+    'Win7'         = 'NTamd64.6.1...7601'    # ✅ Windows 7 SP1
+    'Custom'       = $null
 }
 #endregion ====================================================================
 
@@ -125,11 +131,112 @@ function Revert-AllChanges {
 }
 #endregion ====================================================================
 
-#region ==================== Core Patching Logic =========================
+#region ==================== Text Utilities (NEW) ========================
+# NOTE: New helpers to avoid silent regex failures and to fix the 'missing ]' issue.
+
+function Safe-Replace {
+    <#
+      Purpose: Perform regex replace with match count reporting.
+      Why: Prior code could produce Null or partial header like '[ATI.Mfg.NTamd64...26100' missing ']'.
+    #>
+    param(
+        [Parameter(Mandatory)] [string]$Input,
+        [Parameter(Mandatory)] [string]$Pattern,
+        [Parameter(Mandatory)] [string]$Replacement,
+        [switch]$MultilineIgnoreCase
+    )
+    $options = if ($MultilineIgnoreCase) { 'IgnoreCase','Multiline' } else { @() }
+    $regex   = New-Object System.Text.RegularExpressions.Regex($Pattern, ($options | ForEach-Object {[System.Text.RegularExpressions.RegexOptions]::$_}) -bxor 0)
+    $count   = 0
+    $evaluator = {
+        $script:__ = $args[0]
+        $script:count++
+        return $Replacement
+    }.GetNewClosure()
+    $out = $regex.Replace($Input, [System.Text.RegularExpressions.MatchEvaluator]$evaluator)
+    return ,@($out, $count)
+}
+
+function Update-ManufacturerBlock {
+    <#
+      Purpose: Safely find and update the [Manufacturer] section to include the target decoration
+               on the '%ATI% = ATI.Mfg, ...' line without destroying existing decorations.
+      Fix: Prevents Null method calls when line is not found; logs outcomes.
+      Behavior: Adds the decoration if not present. Leaves all existing entries.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Text,
+        [Parameter(Mandatory)][string]$Decoration
+    )
+
+    $outText = $Text
+
+    # Locate [Manufacturer] block boundaries
+    $manuStart = [regex]::Match($outText, '(?im)^\[Manufacturer\]\s*$')
+    if (-not $manuStart.Success) {
+        Write-Log "No [Manufacturer] section found. Skipping manufacturer update." "Warning"
+        return $outText
+    }
+
+    $startIdx = $manuStart.Index + $manuStart.Length
+    # Find next section header or end of file
+    $nextHdr  = [regex]::Match($outText, '(?im)^\[[^\]\r\n]+\]\s*$', $startIdx)
+    $endIdx   = if ($nextHdr.Success) { $nextHdr.Index } else { $outText.Length }
+    $block    = $outText.Substring($startIdx, $endIdx - $startIdx)
+
+    # Find the ATI line inside the block
+    $atiMatch = [regex]::Match($block, '(?im)^\s*%ATI%\s*=\s*ATI\.Mfg\s*,\s*(.+?)\s*$', 'IgnoreCase, Multiline')
+    if (-not $atiMatch.Success) {
+        # If the ATI line is missing, create one under [Manufacturer]
+        $insert = "`r`n%ATI% = ATI.Mfg, $Decoration`r`n"
+        $outText = $outText.Insert($startIdx, $insert)
+        Write-Log "Inserted missing '%ATI% = ATI.Mfg, ...' with $Decoration in [Manufacturer]." "Success"
+        return $outText
+    }
+
+    $existing = $atiMatch.Groups[1].Value.Trim()
+    $decorations = $existing -split '\s*,\s*' | Where-Object { $_ -ne '' } | Select-Object -Unique
+    if ($decorations -notcontains $Decoration) {
+        $newLine = $block.Substring($atiMatch.Index, $atiMatch.Length) -replace [regex]::Escape($existing), ($existing + ", $Decoration")
+        $block   = $block.Remove($atiMatch.Index, $atiMatch.Length).Insert($atiMatch.Index, $newLine)
+        # Rebuild file
+        $outText = $outText.Remove($startIdx, $endIdx - $startIdx).Insert($startIdx, $block)
+        Write-Log "Added $Decoration to [Manufacturer] ATI line." "Success"
+    } else {
+        Write-Log "Decoration $Decoration already present in [Manufacturer]." "Info"
+    }
+
+    return $outText
+}
+
+function Fix-AtiMfgSectionHeaders {
+    <#
+      Purpose: Normalize any '[ATI.Mfg.NTamd64...whatever]' headers to the chosen decoration
+               and guarantee the closing ']'.
+      Fix: Addresses the user report where ']' was dropped.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Text,
+        [Parameter(Mandatory)][string]$Decoration
+    )
+    $pattern = '^(?<hdr>\[)ATI\.Mfg\.NTamd64[^\]]*(?<br>\])\s*$'
+    $replacement = "[ATI.Mfg.$Decoration]"
+    $result = Safe-Replace -Input $Text -Pattern $pattern -Replacement $replacement -MultilineIgnoreCase
+    $out = $result[0]; $count = $result[1]
+    if ($count -gt 0) {
+        Write-Log "Normalized $count ATI.Mfg section header(s) to '$replacement'." "Success"
+    } else {
+        Write-Log "No ATI.Mfg section headers matched for normalization." "Info"
+    }
+    return $out
+}
+#endregion ====================================================================
+
+#region ==================== Core Patching Logic ==========================
 function Patch-INFAndManifests {
     param(
         [Parameter(Mandatory)][string]$Root,
-        [Parameter(Mandatory)][ValidateSet('Generic','Server2022','Win11_24H2','Server2025','Win7','Custom')][string]$Target,
+        [Parameter(Mandatory)][ValidateSet('Generic','Server2019_2','Server2019_3','Server2022','Win11_24H2','Server2025','Win7','Custom')][string]$Target,
         [string]$CustomDecoration,
         [bool]$PatchManifest
     )
@@ -148,21 +255,39 @@ function Patch-INFAndManifests {
     $script:CurrentLogPath = Join-Path $script:BackupBase "amd_inf_patch_$($script:SessionID).log"
     Write-Log "Session log: $($script:CurrentLogPath)" "Info"
 
+    # Collect likely AMD display INF files.
     $infFiles = Get-ChildItem -Path $Root -Recurse -Filter *.inf -ErrorAction SilentlyContinue |
                 Where-Object {
                     $_.FullName -match '\\Display\\WT6A_INF\\' -or
                     $_.DirectoryName -match 'WT6A_INF' -or
-                    $_.Name -match '^u\d+\.inf$'
+                    $_.Name -match '^u\d+\.inf$' -or
+                    $_.Name -like 'ati2mtag_*.inf'
                 }
 
     if (-not $infFiles) { Write-Log "No INF files found in $Root matching criteria." "Warning" }
     else {
         foreach ($inf in $infFiles) {
             try {
-                $content = Get-Content -LiteralPath $inf.FullName -Raw -ErrorAction Stop
+                $content  = Get-Content -LiteralPath $inf.FullName -Raw -ErrorAction Stop
                 $original = $content
-                $content = [regex]::Replace($content, '(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*', $decoration)
-                $content = [regex]::Replace($content, '(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*', "[ATI.Mfg.$decoration`r`n")
+
+                # 1) Update [Manufacturer] ATI line additively, not destructively. (Fix for null when line not found)
+                $content = Update-ManufacturerBlock -Text $content -Decoration $decoration
+
+                # 2) Normalize [ATI.Mfg.NTamd64...] headers and ensure trailing ']'. (Fix for "mis deleted ]")
+                $content = Fix-AtiMfgSectionHeaders -Text $content -Decoration $decoration
+
+                # 3) Replace any model mapping lines that pin to NTamd64 decorations to target decoration.
+                #    Keep bracket-safe and avoid touching non-device lines.
+                #    Pattern: lines like '%XYZ%= SectionName, NTamd64.....'
+                $rep = Safe-Replace -Input $content `
+                                    -Pattern '^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,)\s*(.+?),\s*NTamd64[^\s,;\]\r\n]*' `
+                                    -Replacement ('$1, ' + $decoration) `
+                                    -MultilineIgnoreCase
+                $content = $rep[0]; $cnt = $rep[1]
+                if ($cnt -gt 0) { Write-Log "Updated $cnt device mapping line(s) to $decoration." "Success" }
+                else { Write-Log "No device mapping lines required update." "Info" }
+
                 if ($content -ne $original) {
                     $bak = Backup-File -FilePath $inf.FullName
                     Set-Content -LiteralPath $inf.FullName -Value $content -Encoding ASCII -ErrorAction Stop
@@ -187,9 +312,17 @@ function Patch-INFAndManifests {
             try {
                 $txt = Get-Content -LiteralPath $m.FullName -Raw -ErrorAction Stop
                 $orig = $txt
-                $txt = [regex]::Replace($txt, '(?i)"(Min(?:OS|Build|Version|OSVersion|OSBuild))"\s*:\s*".+?"', '"$1":"10.0.0.0"')
-                $txt = [regex]::Replace($txt, '(?i)"(Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested))"\s*:\s*".+?"', '"$1":"10.0.99999.0"')
-                $txt = [regex]::Replace($txt, '(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]', '"SupportedOS":[$1,"WindowsServer"]')
+
+                # Keep JSON keys tolerant to variants. XML manifests are left untouched.
+                if ($m.Extension -match '\.json$') {
+                    $rep1 = Safe-Replace -Input $txt -Pattern '(?i)"(Min(?:OS|Build|Version|OSVersion|OSBuild))"\s*:\s*".+?"' -Replacement '"$1":"10.0.0.0"'
+                    $txt  = $rep1[0]
+                    $rep2 = Safe-Replace -Input $txt -Pattern '(?i)"(Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested))"\s*:\s*".+?"' -Replacement '"$1":"10.0.99999.0"'
+                    $txt  = $rep2[0]
+                    $rep3 = Safe-Replace -Input $txt -Pattern '(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]' -Replacement '"SupportedOS":[$1,"WindowsServer"]'
+                    $txt  = $rep3[0]
+                }
+
                 if ($txt -ne $orig) {
                     $bak = Backup-File -FilePath $m.FullName
                     Set-Content -LiteralPath $m.FullName -Value $txt -Encoding UTF8 -ErrorAction Stop
@@ -334,23 +467,23 @@ function Show-Win7SupportWindow {
                     $content = Get-Content -Raw -LiteralPath $inf.FullName
                     $original = $content
 
-                    $content = [regex]::Replace($content, '(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*', 'NTamd64.6.1...7601')
-                    $content = [regex]::Replace($content, '(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*', "[ATI.Mfg.NTamd64.6.1...7601]`r`n")
+                    # Safe manufacturer update + header normalization to keep ']'
+                    $content = $content | ForEach-Object { $_ }
+                    $content = &{
+                        Set-Variable -Name '__t' -Value $content -Scope Local
+                        # mimic main functions locally
+                        $scriptFunc = ${function:Update-ManufacturerBlock}.ToString()
+                        $script:UpdateManufacturer = [scriptblock]::Create($scriptFunc)
+                        $__t = & $script:UpdateManufacturer -Text $__t -Decoration 'NTamd64.6.1...7601'
+                        $scriptFunc2 = ${function:Fix-AtiMfgSectionHeaders}.ToString()
+                        $script:FixHeaders = [scriptblock]::Create($scriptFunc2)
+                        $__t = & $script:FixHeaders -Text $__t -Decoration 'NTamd64.6.1...7601'
+                        $__t
+                    }
 
-                    $modelSection = ""
-                    foreach ($gpu in $gpuMap.Keys) {
-                        $devId = $gpuMap[$gpu]
-                        $modelSection += "%AMD$devId.1% = AMD$devId, PCI\VEN_1002&DEV_$devId`r`n"
-                    }
-                    if ($content -match '(?im)^\[Manufacturer\]\s*') {
-                        $content = [regex]::Replace($content, '(?im)(^\[Manufacturer\]\s*)', "`$1$modelSection")
-                    }
-
-                    $installSection = "`r`n; === Injected Win7 GPU Support ===`r`n"
-                    foreach ($devId in $gpuMap.Values) {
-                        $installSection += "[AMD$devId]`r`nCopyFiles = UMD.Files, UMD.Files.X64`r`n`r`n"
-                    }
-                    $content += $installSection
+                    # Device map lines to Win7 decoration
+                    $regex = '^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,)\s*(.+?),\s*NTamd64[^\s,;\]\r\n]*'
+                    $content = ([regex]::Replace($content, $regex, '$1, NTamd64.6.1...7601', 'IgnoreCase, Multiline'))
 
                     if ($content -ne $original) {
                         $bak = Backup-FileLocal -FP $inf.FullName
@@ -364,8 +497,8 @@ function Show-Win7SupportWindow {
                 foreach ($m in $manifests) {
                     $txt = Get-Content -Raw -LiteralPath $m.FullName
                     $orig = $txt
-                    $txt = [regex]::Replace($txt, '"MinOS"\s*:\s*".+?"', '"MinOS":"6.1.0.0"')
-                    $txt = [regex]::Replace($txt, '"MaxOS"\s*:\s*".+?"', '"MaxOS":"6.1.99999.0"')
+                    $txt = [regex]::Replace($txt, '"MinOS"\s*:\s*".+?"', '"MinOS":"6.1.0.0"', 'IgnoreCase')
+                    $txt = [regex]::Replace($txt, '"MaxOS"\s*:\s*".+?"', '"MaxOS":"6.1.99999.0"', 'IgnoreCase')
                     if ($txt -ne $orig) {
                         $bak = Backup-FileLocal -FP $m.FullName
                         Set-Content -LiteralPath $m.FullName -Value $txt -Encoding UTF8
@@ -403,8 +536,8 @@ function Show-Win7SupportWindow {
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AMD INF Patcher (Server 2025 Ready)"
-        Width="860" Height="700"
+        Title="AMD INF Patcher (Server 2025 Ready)"
+        Width="880" Height="720"
         WindowStartupLocation="CenterScreen"
         Background="#FF000000"
         FontFamily="Consolas"
@@ -434,24 +567,26 @@ $Xaml = @'
 
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBlock Text="Driver Root:" Foreground="#FFFF4444" VerticalAlignment="Center"/>
-                    <TextBox x:Name="txtRoot" Width="500" Height="26" Margin="10,0,0,0"
+                    <TextBox x:Name="txtRoot" Width="520" Height="26" Margin="10,0,0,0"
                              Background="#FF111111" Foreground="#FFFF4444" BorderBrush="#FF330000"/>
-                    <Button x:Name="btnBrowse" Content="Browse..." Width="80" Height="26" Margin="10,0,0,0"
+                    <Button x:Name="btnBrowse" Content="Browse..." Width="90" Height="26" Margin="10,0,0,0"
                             Background="#FF220000" Foreground="#FFFFFFFF"/>
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,15">
                     <TextBlock Text="Target OS:" Foreground="#FFFF4444" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cboTarget" Width="180" Height="26" Margin="10,0,0,0"
+                    <ComboBox x:Name="cboTarget" Width="220" Height="26" Margin="10,0,0,0"
                               Background="#FF111111" Foreground="#FFFF4444" BorderBrush="#FF330000">
                         <ComboBoxItem Content="Generic"/>
+                        <ComboBoxItem Content="Server2019_2"/>
+                        <ComboBoxItem Content="Server2019_3"/>
                         <ComboBoxItem Content="Server2022"/>
                         <ComboBoxItem Content="Win11_24H2"/>
                         <ComboBoxItem Content="Server2025" IsSelected="True"/>
                         <ComboBoxItem Content="Win7"/>
                         <ComboBoxItem Content="Custom"/>
                     </ComboBox>
-                    <TextBox x:Name="txtCustom" Width="250" Height="26" Margin="10,0,0,0"
+                    <TextBox x:Name="txtCustom" Width="280" Height="26" Margin="10,0,0,0"
                              Text="e.g., NTamd64.10.0...26100"
                              IsEnabled="False"
                              Background="#FF111111" Foreground="#FF888888"/>
@@ -461,13 +596,13 @@ $Xaml = @'
                     <CheckBox x:Name="chkManifest" Content="Patch Adrenalin Manifest (Best Effort)"
                               IsChecked="True" Foreground="#FFFF6666"/>
                     <WrapPanel HorizontalAlignment="Center" Margin="0,10,0,0">
-                        <Button x:Name="btnPatch" Content="Patch INF" Width="100" Height="30" Margin="5,0"
+                        <Button x:Name="btnPatch" Content="Patch INF" Width="110" Height="30" Margin="5,0"
                                 Background="#FF330000" Foreground="#FFFFFFFF"/>
-                        <Button x:Name="btnRevert" Content="Revert All" Width="100" Height="30" Margin="5,0"
+                        <Button x:Name="btnRevert" Content="Revert All" Width="110" Height="30" Margin="5,0"
                                 Background="#FF440000" Foreground="#FFFFFFFF"/>
-                        <Button x:Name="btnCheckDeps" Content="Check Dependencies" Width="150" Height="30" Margin="5,0"
+                        <Button x:Name="btnCheckDeps" Content="Check Dependencies" Width="170" Height="30" Margin="5,0"
                                 Background="#FF220000" Foreground="#FFFFFFFF"/>
-                        <Button x:Name="btnWin7" Content="Windows 7 Support" Width="150" Height="30" Margin="5,0"
+                        <Button x:Name="btnWin7" Content="Windows 7 Support" Width="170" Height="30" Margin="5,0"
                                 Background="#FF550000" Foreground="#FFFFFFFF"/>
                     </WrapPanel>
                 </StackPanel>
@@ -535,16 +670,14 @@ $cboTarget.Add_SelectionChanged({
     }
 })
 
-# Custom placeholder
+# Custom placeholder UX
 $txtCustom.AddHandler([System.Windows.UIElement]::GotFocusEvent, [System.Windows.RoutedEventHandler]{
-    param($sender, $e)
     if ($txtCustom.Text -eq "e.g., NTamd64.10.0...26100") {
         $txtCustom.Text = ""
         $txtCustom.Foreground = [System.Windows.Media.Brushes]::White
     }
 })
 $txtCustom.AddHandler([System.Windows.UIElement]::LostFocusEvent, [System.Windows.RoutedEventHandler]{
-    param($sender, $e)
     if ([string]::IsNullOrWhiteSpace($txtCustom.Text)) {
         $txtCustom.Text = "e.g., NTamd64.10.0...26100"
         $txtCustom.Foreground = [System.Windows.Media.Brushes]::LightGray
@@ -577,43 +710,86 @@ $btnPatch.Add_Click({
         param($Root,$Target,$CustomDec,$PatchMan,$SessionID,$BackupBase)
         function Write-LogLocal { param($Msg,$Lvl='Info'); Write-Output @{Message=$Msg;Level=$Lvl} }
         function Backup-FileLocal { param($FP); $h=(Get-FileHash $FP -Algorithm SHA256).Hash.Substring(0,8); $b="$FP.bak_$SessionID`_$h"; Copy-Item $FP $b -Force; $b }
-        $map=@{Generic='NTamd64';Server2022='NTamd64.10.0...20348';Win11_24H2='NTamd64.10.0...26100';Server2025='NTamd64.10.0...26100';Win7='NTamd64.6.1...7601'}
+
+        # Map same as UI
+        $map=@{
+            Generic='NTamd64'
+            Server2019_2='NTamd64.10.0.2.17763'
+            Server2019_3='NTamd64.10.0.3.17763'
+            Server2022='NTamd64.10.0...20348'
+            Win11_24H2='NTamd64.10.0...26100'
+            Server2025='NTamd64.10.0...26100'
+            Win7='NTamd64.6.1...7601'
+        }
         $dec = if($Target -eq 'Custom'){$CustomDec}else{$map[$Target]}
         Write-LogLocal "Patching with: $dec"
 
-        $infFiles = Get-ChildItem -Path $Root -Recurse -Filter *.inf -EA 0 | Where-Object { $_.FullName -match '\\Display\\WT6A_INF\\' -or $_.DirectoryName -match 'WT6A_INF' -or $_.Name -match '^u\d+\.inf$' }
+        # Bring helper functions into job scope
+        ${function:Write-Log} = ${function:Write-LogLocal}
+        ${function:Safe-Replace} = ${function:Safe-Replace}
+        ${function:Update-ManufacturerBlock} = ${function:Update-ManufacturerBlock}
+        ${function:Fix-AtiMfgSectionHeaders} = ${function:Fix-AtiMfgSectionHeaders}
+
+        $infFiles = Get-ChildItem -Path $Root -Recurse -Filter *.inf -EA 0 | Where-Object {
+            $_.FullName -match '\\Display\\WT6A_INF\\' -or
+            $_.DirectoryName -match 'WT6A_INF' -or
+            $_.Name -match '^u\d+\.inf$' -or
+            $_.Name -like 'ati2mtag_*.inf'
+        }
+
         foreach ($inf in $infFiles) {
             try {
                 $txt = Get-Content -Raw -LiteralPath $inf.FullName
                 $orig=$txt
-                $txt=[regex]::Replace($txt,'(?im)^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,).*?NTamd64[^\s,;\]\r\n]*',$dec)
-                $txt=[regex]::Replace($txt,'(?im)^\[ATI\.Mfg\.NTamd64[^\]]*\]\s*',"[ATI.Mfg.$dec`r`n")
+
+                $txt = Update-ManufacturerBlock -Text $txt -Decoration $dec
+                $txt = Fix-AtiMfgSectionHeaders -Text $txt -Decoration $dec
+
+                $rep = Safe-Replace -Input $txt `
+                                    -Pattern '^(?=\s*%[^%]+\s*=\s*[^,\r\n]+,)\s*(.+?),\s*NTamd64[^\s,;\]\r\n]*' `
+                                    -Replacement ('$1, ' + $dec) `
+                                    -MultilineIgnoreCase
+                $txt = $rep[0]
+                $cnt = $rep[1]
+                if ($cnt -gt 0) { Write-LogLocal "Updated $cnt device mapping line(s) to $dec." "Success" }
+
                 if ($txt -ne $orig){
                     $bak=Backup-FileLocal -FP $inf.FullName
                     Set-Content -LiteralPath $inf.FullName -Value $txt -Encoding ASCII
-                    Write-LogLocal "Patched INF: $($inf.FullName)"
+                    Write-LogLocal "Patched INF: $($inf.FullName)" "Success"
+                } else {
+                    Write-LogLocal "No changes needed: $($inf.FullName)" "Info"
                 }
             } catch { Write-LogLocal "INF error: $_" "Error" }
         }
 
         if ($PatchMan) {
-            $manifests = Get-ChildItem -Path $Root -Recurse -File -EA 0 | Where-Object { $_.Name -match '(?i)(InstallManifest\.json|AppInstallerManifest\.xml|manifest\.json)' -or $_.DirectoryName -match 'Bin64' }
+            $manifests = Get-ChildItem -Path $Root -Recurse -File -EA 0 | Where-Object {
+                $_.Name -match '(?i)(InstallManifest\.json|AppInstallerManifest\.xml|manifest\.json)' -or $_.DirectoryName -match 'Bin64'
+            }
             foreach ($m in $manifests) {
                 try {
                     $txt = Get-Content -Raw -LiteralPath $m.FullName
                     $orig=$txt
-                    $txt=[regex]::Replace($txt,'(?i)"Min(?:OS|Build|Version|OSVersion|OSBuild)"\s*:\s*".+?"','"MinOS":"10.0.0.0"')
-                    $txt=[regex]::Replace($txt,'(?i)"Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested)"\s*:\s*".+?"','"MaxOS":"10.0.99999.0"')
-                    $txt=[regex]::Replace($txt,'(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]','"SupportedOS":[$1,"WindowsServer"]')
+                    if ($m.Extension -match '\.json$') {
+                        $r1 = Safe-Replace -Input $txt -Pattern '(?i)"Min(?:OS|Build|Version|OSVersion|OSBuild)"\s*:\s*".+?"' -Replacement '"MinOS":"10.0.0.0"'
+                        $txt = $r1[0]
+                        $r2 = Safe-Replace -Input $txt -Pattern '(?i)"Max(?:OS|Build|Version|OSVersion|OSBuild|OSVersionTested)"\s*:\s*".+?"' -Replacement '"MaxOS":"10.0.99999.0"'
+                        $txt = $r2[0]
+                        $r3 = Safe-Replace -Input $txt -Pattern '(?i)"SupportedOS(?:es|List)"\s*:\s*\[(.*?)\]' -Replacement '"SupportedOS":[$1,"WindowsServer"]'
+                        $txt = $r3[0]
+                    }
                     if ($txt -ne $orig){
                         $bak=Backup-FileLocal -FP $m.FullName
                         Set-Content -LiteralPath $m.FullName -Value $txt -Encoding UTF8
-                        Write-LogLocal "Patched manifest: $($m.FullName)"
+                        Write-LogLocal "Patched manifest: $($m.FullName)" "Success"
+                    } else {
+                        Write-LogLocal "Manifest unchanged: $($m.FullName)" "Info"
                     }
                 } catch { Write-LogLocal "Manifest error: $_" "Error" }
             }
         }
-        Write-LogLocal "Patching completed."
+        Write-LogLocal "Patching completed." "Success"
     } -ArgumentList $txtRoot.Text,$target,$customDec,$chkManifest.IsChecked,$script:SessionID,$script:BackupBase | Out-Null
 
     $timer = New-Object System.Windows.Threading.DispatcherTimer
