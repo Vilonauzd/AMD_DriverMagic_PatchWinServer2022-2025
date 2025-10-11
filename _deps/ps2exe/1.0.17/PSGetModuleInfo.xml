@@ -1,0 +1,124 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>Microsoft.PowerShell.Commands.PSRepositoryItemInfo</T>
+      <T>System.Management.Automation.PSCustomObject</T>
+      <T>System.Object</T>
+    </TN>
+    <MS>
+      <S N="Name">ps2exe</S>
+      <S N="Version">1.0.17</S>
+      <S N="Type">Module</S>
+      <S N="Description">Compiles Powershell scripts to executables. Overworking of the great script of Ingo Karstein with GUI support._x000D__x000A_'Invoke-ps2exe script.ps1' (or 'ps2exe script.ps1') compiles to script.exe. Several control parameters available._x000D__x000A_Or use Win-PS2EXE as a graphical front end to the compiler.</S>
+      <S N="Author">Markus Scholtes</S>
+      <S N="CompanyName">MScholtes</S>
+      <S N="Copyright">(c) Markus Scholtes 2025</S>
+      <DT N="PublishedDate">2025-08-21T09:29:50-05:00</DT>
+      <Nil N="InstalledDate" />
+      <Nil N="UpdatedDate" />
+      <URI N="LicenseUri">https://github.com/MScholtes/PS2EXE/blob/master/LICENSE</URI>
+      <URI N="ProjectUri">https://github.com/MScholtes/PS2EXE</URI>
+      <Nil N="IconUri" />
+      <Obj N="Tags" RefId="1">
+        <TN RefId="1">
+          <T>System.Object[]</T>
+          <T>System.Array</T>
+          <T>System.Object</T>
+        </TN>
+        <LST>
+          <S>Compiler</S>
+          <S>ps2exe</S>
+          <S>Executable</S>
+          <S>Win-PS2EXE</S>
+          <S>PSModule</S>
+        </LST>
+      </Obj>
+      <Obj N="Includes" RefId="2">
+        <TN RefId="2">
+          <T>System.Collections.Hashtable</T>
+          <T>System.Object</T>
+        </TN>
+        <DCT>
+          <En>
+            <S N="Key">Cmdlet</S>
+            <Obj N="Value" RefId="3">
+              <TNRef RefId="1" />
+              <LST />
+            </Obj>
+          </En>
+          <En>
+            <S N="Key">DscResource</S>
+            <Ref N="Value" RefId="3" />
+          </En>
+          <En>
+            <S N="Key">Workflow</S>
+            <Ref N="Value" RefId="3" />
+          </En>
+          <En>
+            <S N="Key">Command</S>
+            <Obj N="Value" RefId="4">
+              <TNRef RefId="1" />
+              <LST>
+                <S>Invoke-PS2EXE</S>
+              </LST>
+            </Obj>
+          </En>
+          <En>
+            <S N="Key">RoleCapability</S>
+            <Ref N="Value" RefId="3" />
+          </En>
+          <En>
+            <S N="Key">Function</S>
+            <Obj N="Value" RefId="5">
+              <TNRef RefId="1" />
+              <LST>
+                <S>Invoke-PS2EXE</S>
+              </LST>
+            </Obj>
+          </En>
+        </DCT>
+      </Obj>
+      <Nil N="PowerShellGetFormatVersion" />
+      <S N="ReleaseNotes"># 1.0.17 / 2025-08-21_x000D__x000A_- new parameter -embedFiles to embed files in compiled executable_x000D__x000A_# 1.0.16 / 2025-07-20_x000D__x000A_- new parameter -conHost for force starting compiled executables in Conhost instead of Windows Terminal_x000D__x000A_# 1.0.15 / 2025-01-05_x000D__x000A_- if used only in Powershell Core the module has not to be installed in Powershell 5.1 too_x000D__x000A_# 1.0.14 / 2024-09-15_x000D__x000A_- new parameter -? for compiled executables to show the help of the original Powershell script_x000D__x000A_- in GUI mode window titles are the application title (when set compiling with parameter -title)_x000D__x000A_# 1.0.13 / 2023-09-26_x000D__x000A_- now [ and ] are supported in directory name of script_x000D__x000A_- source file might be larger than 16 MB (for whoever that needs)_x000D__x000A_- new addtional parameter text field in Win-PS2EXE_x000D__x000A_# 1.0.12 / 2022-11-22_x000D__x000A_- new parameter -winFormsDPIAware to support scaling for WinForms in noConsole mode (only Windows 10 or up)_x000D__x000A_# 1.0.11 / 2021-11-21_x000D__x000A_- fixed password longer than 24 characters error_x000D__x000A_- new parameter -DPIAware to support scaling in noConsole mode_x000D__x000A_- new parameter -exitOnCancel to stop program execution on cancel in input boxes (only in noConsole mode)_x000D__x000A_# 1.0.10 / 2021-04-10_x000D__x000A_- parameter outputFile now accepts a target folder (without filename)_x000D__x000A_# 1.0.9 / 2021-02-28_x000D__x000A_- new parameter UNICODEEncoding to output as UNICODE_x000D__x000A_- changed parameter debug to prepareDebug_x000D__x000A_- finally dared to use advanced parameters_x000D__x000A_# 1.0.8 / 2020-10-24_x000D__x000A_- refactored_x000D__x000A_# 1.0.7 / 2020-08-21_x000D__x000A_- bug fix for simultanous progress bars in one pipeline_x000D__x000A_# 1.0.6 / 2020-08-10_x000D__x000A_- prompt for choice behaves like Powershell now (only for console mode)_x000D__x000A_- (limited) support for Powershell Core (starts Windows Powershell in the background)_x000D__x000A_- fixed processing of negative parameter values_x000D__x000A_- support for animated progress bars (noConsole mode only)_x000D__x000A_# 1.0.5 / 2020-07-11_x000D__x000A_- support for nested progress bars (noConsole mode only)_x000D__x000A_# 1.0.4 / 2020-04-19_x000D__x000A_- Application.EnableVisualStyles() as default for GUI applications, new parameter -noVisualStyles to prevent this_x000D__x000A_# 1.0.3 / 2020-02-15_x000D__x000A_- Ignore control keys in secure string request in console mode_x000D__x000A_# 1.0.1 / 2019-12-16_x000D__x000A_- Fixed "unlimited window width for GUI windows" issue in ps2exe.ps1 and Win-PS2EXE_x000D__x000A_# 1.0.0 / 2019-11-08_x000D__x000A_- First stable release_x000D__x000A_# 0.0.0 / 2019-09-15_x000D__x000A_- Experimental</S>
+      <Obj N="Dependencies" RefId="6">
+        <TNRef RefId="1" />
+        <LST />
+      </Obj>
+      <S N="RepositorySourceLocation">https://www.powershellgallery.com/api/v2</S>
+      <S N="Repository">PSGallery</S>
+      <S N="PackageManagementProvider">NuGet</S>
+      <Obj N="AdditionalMetadata" RefId="7">
+        <TN RefId="3">
+          <T>System.Management.Automation.PSCustomObject</T>
+          <T>System.Object</T>
+        </TN>
+        <MS>
+          <S N="copyright">(c) Markus Scholtes 2025</S>
+          <S N="description">Compiles Powershell scripts to executables. Overworking of the great script of Ingo Karstein with GUI support._x000D__x000A_'Invoke-ps2exe script.ps1' (or 'ps2exe script.ps1') compiles to script.exe. Several control parameters available._x000D__x000A_Or use Win-PS2EXE as a graphical front end to the compiler.</S>
+          <S N="requireLicenseAcceptance">False</S>
+          <S N="releaseNotes"># 1.0.17 / 2025-08-21_x000D__x000A_- new parameter -embedFiles to embed files in compiled executable_x000D__x000A_# 1.0.16 / 2025-07-20_x000D__x000A_- new parameter -conHost for force starting compiled executables in Conhost instead of Windows Terminal_x000D__x000A_# 1.0.15 / 2025-01-05_x000D__x000A_- if used only in Powershell Core the module has not to be installed in Powershell 5.1 too_x000D__x000A_# 1.0.14 / 2024-09-15_x000D__x000A_- new parameter -? for compiled executables to show the help of the original Powershell script_x000D__x000A_- in GUI mode window titles are the application title (when set compiling with parameter -title)_x000D__x000A_# 1.0.13 / 2023-09-26_x000D__x000A_- now [ and ] are supported in directory name of script_x000D__x000A_- source file might be larger than 16 MB (for whoever that needs)_x000D__x000A_- new addtional parameter text field in Win-PS2EXE_x000D__x000A_# 1.0.12 / 2022-11-22_x000D__x000A_- new parameter -winFormsDPIAware to support scaling for WinForms in noConsole mode (only Windows 10 or up)_x000D__x000A_# 1.0.11 / 2021-11-21_x000D__x000A_- fixed password longer than 24 characters error_x000D__x000A_- new parameter -DPIAware to support scaling in noConsole mode_x000D__x000A_- new parameter -exitOnCancel to stop program execution on cancel in input boxes (only in noConsole mode)_x000D__x000A_# 1.0.10 / 2021-04-10_x000D__x000A_- parameter outputFile now accepts a target folder (without filename)_x000D__x000A_# 1.0.9 / 2021-02-28_x000D__x000A_- new parameter UNICODEEncoding to output as UNICODE_x000D__x000A_- changed parameter debug to prepareDebug_x000D__x000A_- finally dared to use advanced parameters_x000D__x000A_# 1.0.8 / 2020-10-24_x000D__x000A_- refactored_x000D__x000A_# 1.0.7 / 2020-08-21_x000D__x000A_- bug fix for simultanous progress bars in one pipeline_x000D__x000A_# 1.0.6 / 2020-08-10_x000D__x000A_- prompt for choice behaves like Powershell now (only for console mode)_x000D__x000A_- (limited) support for Powershell Core (starts Windows Powershell in the background)_x000D__x000A_- fixed processing of negative parameter values_x000D__x000A_- support for animated progress bars (noConsole mode only)_x000D__x000A_# 1.0.5 / 2020-07-11_x000D__x000A_- support for nested progress bars (noConsole mode only)_x000D__x000A_# 1.0.4 / 2020-04-19_x000D__x000A_- Application.EnableVisualStyles() as default for GUI applications, new parameter -noVisualStyles to prevent this_x000D__x000A_# 1.0.3 / 2020-02-15_x000D__x000A_- Ignore control keys in secure string request in console mode_x000D__x000A_# 1.0.1 / 2019-12-16_x000D__x000A_- Fixed "unlimited window width for GUI windows" issue in ps2exe.ps1 and Win-PS2EXE_x000D__x000A_# 1.0.0 / 2019-11-08_x000D__x000A_- First stable release_x000D__x000A_# 0.0.0 / 2019-09-15_x000D__x000A_- Experimental</S>
+          <S N="isLatestVersion">True</S>
+          <S N="isAbsoluteLatestVersion">True</S>
+          <S N="versionDownloadCount">74700</S>
+          <S N="downloadCount">2472643</S>
+          <S N="packageSize">38103</S>
+          <S N="published">8/21/2025 9:29:50 AM -05:00</S>
+          <S N="created">8/21/2025 9:29:50 AM -05:00</S>
+          <S N="lastUpdated">10/11/2025 4:00:00 AM -05:00</S>
+          <S N="tags">Compiler ps2exe Executable Win-PS2EXE PSModule PSFunction_Invoke-PS2EXE PSCommand_Invoke-PS2EXE PSIncludes_Function</S>
+          <S N="developmentDependency">False</S>
+          <S N="updated">2025-10-11T04:00:00Z</S>
+          <S N="NormalizedVersion">1.0.17</S>
+          <S N="Authors">Markus Scholtes</S>
+          <S N="IsPrerelease">false</S>
+          <S N="ItemType">Module</S>
+          <S N="FileList">ps2exe.nuspec|ps2exe.ps1|ps2exe.psm1|ps2exe.psd1|Win-PS2EXE.exe</S>
+          <S N="GUID">ff25bfed-b14c-4781-9c2d-bf25870696d6</S>
+          <S N="PowerShellVersion">3.0</S>
+          <S N="DotNetFrameworkVersion">4.0</S>
+        </MS>
+      </Obj>
+      <S N="InstalledLocation">F:\AMD_DriverMagic_PatchWinServer2022-2025\AMD_DriverMagic_PatchWinServer2022-2025\_deps\ps2exe\1.0.17</S>
+    </MS>
+  </Obj>
+</Objs>
