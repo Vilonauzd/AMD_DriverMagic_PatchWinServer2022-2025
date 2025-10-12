@@ -1,5 +1,4 @@
-﻿#requires -RunAsAdministrator
-<#
+﻿<#
     AMD INF Patcher – Web UI Edition (v4.0)
     • Replaces WPF GUI with embedded web server + Rarity-style UI
     • Fixes log readability, revert logic, adds file browser
