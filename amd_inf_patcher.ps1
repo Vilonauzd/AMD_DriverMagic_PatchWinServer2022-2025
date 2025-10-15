@@ -421,7 +421,7 @@ Windows 7 note:
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CloudWare.host™ AMD INF Patcher"
+        Title="AMD INF Patcher..."
         Width="980" Height="780" MinWidth="880" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Background="#0E0F12" FontFamily="Segoe UI"
