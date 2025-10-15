@@ -1,7 +1,6 @@
 # AMD_DriverMagic_PatchWinServer2022-2025
 
-<img width="2224" height="1502" alt="image" src="https://github.com/user-attachments/assets/2002e1d3-27a6-4192-8fe8-daa210af2895" />
-
+<img width="2409" height="1328" alt="image" src="https://github.com/user-attachments/assets/09286f7d-c961-4624-ab8e-4eabe33db6d9" />
 
 
 # AMD INF Patcher – Windows Server 2025 Ready 
