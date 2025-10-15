@@ -421,7 +421,7 @@ Windows 7 note:
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Rarity Intelligence™ AMD INF Patcher"
+        Title="CloudWare.host™ AMD INF Patcher"
         Width="980" Height="780" MinWidth="880" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Background="#0E0F12" FontFamily="Segoe UI"
@@ -573,7 +573,7 @@ $Xaml = @'
       <!-- Title -->
       <Border Grid.Row="0" CornerRadius="14" Padding="14" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource HardShadow}" Margin="0,0,0,12">
         <DockPanel>
-          <TextBlock x:Name="txtTitle" Text="Rarity Intelligence™ AMD INF PATCHER"
+          <TextBlock x:Name="txtTitle" Text="CloudWare.host™ AMD INF PATCHER"
                      Foreground="{StaticResource NeutralText}" FontSize="26" FontWeight="Bold"
                      HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock.Effect>
