@@ -1,12 +1,18 @@
 ﻿#requires -RunAsAdministrator
 <#
-    AMD INF Patcher – WPF Edition (v2.10)
-    Changes:
-      • Fix: no more blanked .INF files (transactional write + validation)
-      • Fix: regex replace no longer uses script-scope counters
-      • Safer backups; write-through temp files, only commit if sane
-      • UI: “AMD Drivers” button opens https://amd.com/drivers
-      • Post-patch prompts to open containing folders for modified INF and manifest files
+    AMD INF Patcher – WPF Edition (v2.10 • Rarity Intel UI)
+    UI:
+      • Rounded, shadowed “tech-sexy” theme (maroon / blue-gray / silver)
+      • Title with slow strobe effect
+      • Log output: bright white with soft glow, capped to ≤50% window height
+      • Buttons re-templated with CornerRadius and hover depth
+      • “AMD Drivers” button opens https://amd.com/drivers
+      • Post-patch prompts to open folders of first modified INF/manifest
+
+    Engine:
+      • No blanked .INF files (transactional write + sanity checks)
+      • Regex replace no script-scope counters
+      • Safe backups with hash stamp
 #>
 
 param([string]$InitialRootPath = '')
@@ -77,7 +83,6 @@ function Get-FunctionText {
     $out
 }
 
-# Detect original newline style for preservation
 function Get-NewlineStyle {
     param([string]$Text)
     if ($Text -match "`r`n") { return "`r`n" }
@@ -85,7 +90,6 @@ function Get-NewlineStyle {
     else { return "`r`n" }
 }
 
-# Safe file read with BOM detection and size cap; returns $null for empty/whitespace/binary
 function Read-TextFileSafe {
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Path,
@@ -119,7 +123,6 @@ function Read-TextFileSafe {
     } catch { Write-Log "Read error: $Path :: $_" "Error"; return $null }
 }
 
-# Transactional safe write; ASCII for INF, UTF8 for JSON; verifies sanity before commit
 function Write-TextFileSafe {
     param(
         [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Path,
@@ -131,7 +134,6 @@ function Write-TextFileSafe {
     try {
         if ($null -eq $Text) { Write-Log "Write skip. Null text to $Path" "Warning"; return $false }
 
-        # normalize newlines to original style
         $norm = ($Text -replace "(`r`n|`n|`r)", $PreserveNewline)
 
         $tmp = "$Path.tmp_write_$($script:SessionID)"
@@ -139,7 +141,6 @@ function Write-TextFileSafe {
 
         [System.IO.File]::WriteAllText($tmp, $norm, $enc)
 
-        # Validate: size and key markers
         $ok = Test-Path $tmp
         if ($ok) {
             $len = (Get-Item $tmp).Length
@@ -406,129 +407,252 @@ function Patch-INFAndManifests {
 #endregion
 
 #region ==================== Win7 Support Modal ==========================
-# (unchanged)
+function Show-Win7SupportWindow {
+@"
+Windows 7 note:
+• Use legacy Adrenalin packages with appropriate signatures.
+• Decoration mapping example: NTamd64.6.1...7601
+"@ | Out-Null
+[System.Windows.MessageBox]::Show('Windows 7 support requires legacy packages and proper signing.','Windows 7', 'OK','Information') | Out-Null
+}
 #endregion
 
-#region ==================== WPF UI ===========================
+#region ==================== WPF UI (Rarity Intel Makeover) ==============
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AMD INF Patcher (Server 2025 Ready)"
-        Width="900" Height="760" MinWidth="820" MinHeight="620"
+        Title="Rarity Intelligence™ AMD INF Patcher"
+        Width="980" Height="780" MinWidth="880" MinHeight="640"
         WindowStartupLocation="CenterScreen"
-        Background="#12141A" FontFamily="Consolas"
+        Background="#0E0F12" FontFamily="Segoe UI"
         AllowsTransparency="False" WindowStyle="SingleBorderWindow">
-    <Grid>
-        <Grid.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#12141A" Offset="0"/>
-                <GradientStop Color="#0E1825" Offset="1"/>
-            </LinearGradientBrush>
-        </Grid.Background>
+  <Window.Resources>
+    <!-- Palette -->
+    <SolidColorBrush x:Key="BgDark"        Color="#0E0F12"/>
+    <SolidColorBrush x:Key="PanelTop"      Color="#131723"/>
+    <SolidColorBrush x:Key="PanelBottom"   Color="#0B0F18"/>
+    <SolidColorBrush x:Key="Silver"        Color="#D4D8DC"/>
+    <SolidColorBrush x:Key="BlueGray"      Color="#6E91A8"/>
+    <SolidColorBrush x:Key="Maroon"        Color="#A91D25"/>
+    <SolidColorBrush x:Key="BorderSoft"    Color="#232938"/>
+    <SolidColorBrush x:Key="NeutralText"   Color="#E6E8EE"/>
+    <SolidColorBrush x:Key="InputBg"       Color="#161A22"/>
+    <SolidColorBrush x:Key="Danger"        Color="#E04545"/>
 
-        <Grid Margin="14">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>   <!-- Title -->
-                <RowDefinition Height="Auto"/>   <!-- Root -->
-                <RowDefinition Height="Auto"/>   <!-- Target -->
-                <RowDefinition Height="Auto"/>   <!-- Buttons -->
-                <RowDefinition Height="*"/>      <!-- Log -->
-                <RowDefinition Height="Auto"/>   <!-- Footer -->
-            </Grid.RowDefinitions>
+    <!-- Panel Background -->
+    <LinearGradientBrush x:Key="CardGrad" StartPoint="0,0" EndPoint="0,1">
+      <GradientStop Color="#151B28" Offset="0"/>
+      <GradientStop Color="#0C111B" Offset="1"/>
+    </LinearGradientBrush>
 
-            <TextBlock Grid.Row="0" Text="AMD INF PATCHER"
-                       Foreground="#F04444" FontSize="26" FontWeight="Bold"
-                       HorizontalAlignment="Center" Margin="0,0,0,12">
-                <TextBlock.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.6"/></TextBlock.Effect>
-            </TextBlock>
+    <!-- Drop shadow effect -->
+    <DropShadowEffect x:Key="SoftShadow" BlurRadius="14" ShadowDepth="2" Opacity="0.45" Color="#000000"/>
+    <DropShadowEffect x:Key="HardShadow" BlurRadius="22" ShadowDepth="2" Opacity="0.6" Color="#000000"/>
 
-            <!-- Root selector -->
-            <Border Grid.Row="1" CornerRadius="10" Padding="12" Margin="0,0,0,10"
-                    Background="#0F1B2B" BorderBrush="#263043" BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Driver Root:" Foreground="#E0E6ED" VerticalAlignment="Center"/>
-                    <TextBox x:Name="txtRoot" Grid.Column="1" Height="30" Margin="10,0,10,0"
-                             Background="#1A2A3D" Foreground="#F9B0B0" BorderBrush="#3B4B63" />
-                    <Button x:Name="btnBrowse" Grid.Column="2" Content="Browse..." Width="100" Height="30"
-                            Background="#7A1F2A" Foreground="#FFFFFF">
-                        <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.5"/></Button.Effect>
-                    </Button>
-                </Grid>
+    <!-- Title slow strobe -->
+    <Storyboard x:Key="TitleStrobe">
+      <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)" From="0.85" To="1" Duration="0:0:1.8" AutoReverse="True" RepeatBehavior="Forever"/>
+    </Storyboard>
+
+    <!-- Rounded Button Template (fixed) -->
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="Background" Value="#7A1F2A"/>
+      <Setter Property="BorderBrush" Value="#5C1220"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd"
+                    CornerRadius="10"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    SnapsToDevicePixels="True">
+              <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.45" Color="#000000"/>
+              </Border.Effect>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="4"/>
             </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Effect">
+                  <Setter.Value>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="2" Opacity="0.65" Color="#111111"/>
+                  </Setter.Value>
+                </Setter>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
 
-            <!-- Target selector -->
-            <Border Grid.Row="2" CornerRadius="10" Padding="12" Margin="0,0,0,12"
-                    Background="#0F1B2B" BorderBrush="#263043" BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="220"/>
-                    <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Target OS:" Foreground="#E0E6ED" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cboTarget" Grid.Column="1" Height="30" Margin="10,0,10,0"
-                              Background="#1A2A3D" Foreground="#F9B0B0" BorderBrush="#3B4B63">
-                        <ComboBoxItem Content="Generic"/>
-                        <ComboBoxItem Content="Server2019_2"/>
-                        <ComboBoxItem Content="Server2019_3"/>
-                        <ComboBoxItem Content="Server2022"/>
-                        <ComboBoxItem Content="Win11_24H2"/>
-                        <ComboBoxItem Content="Server2025" IsSelected="True"/>
-                        <ComboBoxItem Content="Win7"/>
-                        <ComboBoxItem Content="Custom"/>
-                    </ComboBox>
-                    <TextBox x:Name="txtCustom" Grid.Column="2" Height="30" Text="e.g., NTamd64.10.0...26100"
-                             Background="#1A2A3D" Foreground="#8FA6C1" BorderBrush="#3B4B63" IsEnabled="False"/>
-                </Grid>
+
+    <!-- Inputs -->
+    <Style TargetType="TextBox">
+      <Setter Property="Background" Value="{StaticResource InputBg}"/>
+      <Setter Property="Foreground" Value="{StaticResource NeutralText}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Effect="{StaticResource SoftShadow}">
+              <ScrollViewer x:Name="PART_ContentHost"/>
             </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Background" Value="{StaticResource InputBg}"/>
+      <Setter Property="Foreground" Value="{StaticResource NeutralText}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="6,4"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ComboBox}">
+            <Grid>
+              <Border x:Name="Bd" CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Effect="{StaticResource SoftShadow}"/>
+              <ToggleButton Grid.Row="0" x:Name="ToggleButton" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False">
+                <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" Margin="8,4"/>
+              </ToggleButton>
+              <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                <Border CornerRadius="8" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource SoftShadow}">
+                  <ScrollViewer Margin="4" SnapsToDevicePixels="True">
+                    <StackPanel IsItemsHost="True"/>
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="{StaticResource Silver}"/>
+      <Setter Property="Margin" Value="0,0,12,0"/>
+    </Style>
 
-            <!-- Buttons -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-                <CheckBox x:Name="chkManifest" Content="Patch Adrenalin Manifest (Best Effort)" IsChecked="True" Foreground="#C7D2E2" Margin="0,0,12,0"/>
-                <Button x:Name="btnPatch" Content="Patch INF" Width="120" Height="34" Margin="4,0"
-                        Background="#7A1F2A" Foreground="#FFFFFF">
-                    <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55"/></Button.Effect>
-                </Button>
-                <Button x:Name="btnRevert" Content="Revert All" Width="120" Height="34" Margin="4,0"
-                        Background="#8A2B3A" Foreground="#FFFFFF">
-                    <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55"/></Button.Effect>
-                </Button>
-                <Button x:Name="btnCheckDeps" Content="Check Dependencies" Width="170" Height="34" Margin="4,0"
-                        Background="#2B3445" Foreground="#FFFFFF">
-                    <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55"/></Button.Effect>
-                </Button>
-                <Button x:Name="btnWin7" Content="Windows 7 Support" Width="170" Height="34" Margin="4,0"
-                        Background="#2B3445" Foreground="#FFFFFF">
-                    <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55"/></Button.Effect>
-                </Button>
-                <Button x:Name="btnDrivers" Content="AMD Drivers" Width="140" Height="34" Margin="8,0,0,0"
-                        Background="#2B4C7A" Foreground="#FFFFFF" ToolTip="Open https://amd.com/drivers">
-                    <Button.Effect><DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55"/></Button.Effect>
-                </Button>
-            </StackPanel>
+    <!-- Accent Buttons -->
+    <SolidColorBrush x:Key="BtnPrimary" Color="#7A1F2A"/>
+    <SolidColorBrush x:Key="BtnSecondary" Color="#2B3445"/>
+    <SolidColorBrush x:Key="BtnInfo" Color="#2B4C7A"/>
+    <SolidColorBrush x:Key="BtnDanger" Color="#E04545"/>
 
-            <!-- Log (capped by MaxHeight, independent scroll) -->
-            <Border Grid.Row="4" CornerRadius="10" Padding="10"
-                    Background="#0F1B2B" BorderBrush="#263043" BorderThickness="1">
-                <RichTextBox x:Name="txtLog"
-                             Background="#0B0B0B"
-                             Foreground="#FF3A3A"
-                             FontSize="12"
-                             IsReadOnly="True"
-                             VerticalScrollBarVisibility="Auto"
-                             BorderBrush="#3B4B63"
-                             BorderThickness="1"/>
-            </Border>
+  </Window.Resources>
 
-            <TextBlock Grid.Row="5" Text="By AMD_DriverMagic | Reddit Community"
-                       HorizontalAlignment="Center" Foreground="#7C8DA5" FontSize="11" Margin="0,10,0,0"/>
+  <Grid>
+    <Grid.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#12141A" Offset="0"/>
+        <GradientStop Color="#0E1825" Offset="1"/>
+      </LinearGradientBrush>
+    </Grid.Background>
+
+    <Grid Margin="16">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- Title -->
+      <Border Grid.Row="0" CornerRadius="14" Padding="14" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource HardShadow}" Margin="0,0,0,12">
+        <DockPanel>
+          <TextBlock x:Name="txtTitle" Text="Rarity Intelligence™ AMD INF PATCHER"
+                     Foreground="{StaticResource NeutralText}" FontSize="26" FontWeight="Bold"
+                     HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock.Effect>
+              <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#FFFFFF" Opacity="0.25"/>
+            </TextBlock.Effect>
+          </TextBlock>
+        </DockPanel>
+      </Border>
+
+      <!-- Root selector -->
+      <Border Grid.Row="1" CornerRadius="12" Padding="12" Margin="0,0,0,10" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource SoftShadow}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="Driver Root:" Foreground="{StaticResource Silver}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+          <TextBox x:Name="txtRoot" Grid.Column="1" Height="34" Margin="0,0,10,0"/>
+          <Button x:Name="btnBrowse" Grid.Column="2" Content="Browse…" Width="110" Height="34" Background="{StaticResource BtnPrimary}" BorderBrush="#5C1220" BorderThickness="1"/>
         </Grid>
+      </Border>
+
+      <!-- Target selector -->
+      <Border Grid.Row="2" CornerRadius="12" Padding="12" Margin="0,0,0,12" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource SoftShadow}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="Target OS:" Foreground="{StaticResource Silver}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+          <ComboBox x:Name="cboTarget" Grid.Column="1" Height="34" Margin="0,0,10,0">
+            <ComboBoxItem Content="Generic"/>
+            <ComboBoxItem Content="Server2019_2"/>
+            <ComboBoxItem Content="Server2019_3"/>
+            <ComboBoxItem Content="Server2022"/>
+            <ComboBoxItem Content="Win11_24H2"/>
+            <ComboBoxItem Content="Server2025" IsSelected="True"/>
+            <ComboBoxItem Content="Win7"/>
+            <ComboBoxItem Content="Custom"/>
+          </ComboBox>
+          <TextBox x:Name="txtCustom" Grid.Column="2" Height="34" Text="e.g., NTamd64.10.0...26100" IsEnabled="False"/>
+        </Grid>
+      </Border>
+
+      <!-- Buttons -->
+      <Border Grid.Row="3" CornerRadius="12" Padding="10" Background="{StaticResource CardGrad}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1" Effect="{StaticResource SoftShadow}" Margin="0,0,0,10">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
+          <CheckBox x:Name="chkManifest" Content="Patch Adrenalin Manifest (Best Effort)" IsChecked="True"/>
+          <Button x:Name="btnPatch" Content="Patch INF" Width="130" Height="36" Margin="10,0,0,0" Background="{StaticResource BtnPrimary}" BorderBrush="#5C1220" BorderThickness="1"/>
+          <Button x:Name="btnRevert" Content="Revert All" Width="130" Height="36" Margin="6,0,0,0" Background="#8A2B3A" BorderBrush="#5C1220" BorderThickness="1"/>
+          <Button x:Name="btnCheckDeps" Content="Check Dependencies" Width="180" Height="36" Margin="6,0,0,0" Background="{StaticResource BtnSecondary}" BorderBrush="#1E2634" BorderThickness="1"/>
+          <Button x:Name="btnWin7" Content="Windows 7 Support" Width="170" Height="36" Margin="6,0,0,0" Background="{StaticResource BtnSecondary}" BorderBrush="#1E2634" BorderThickness="1"/>
+          <Button x:Name="btnDrivers" Content="AMD Drivers" Width="140" Height="36" Margin="10,0,0,0" Background="{StaticResource BtnInfo}" BorderBrush="#223E62" BorderThickness="1" ToolTip="Open https://amd.com/drivers"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Log -->
+      <Border Grid.Row="4" CornerRadius="12" Padding="10" Background="#0B0B0B" BorderBrush="#30384A" BorderThickness="1" Effect="{StaticResource SoftShadow}">
+        <RichTextBox x:Name="txtLog"
+                     Background="#0B0B0B"
+                     Foreground="#FFFFFF"
+                     FontSize="12"
+                     IsReadOnly="True"
+                     VerticalScrollBarVisibility="Auto"
+                     BorderBrush="#3B4B63"
+                     BorderThickness="1">
+          <RichTextBox.Effect>
+            <!-- Soft outer white glow -->
+            <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#FFFFFF" Opacity="0.22"/>
+          </RichTextBox.Effect>
+        </RichTextBox>
+      </Border>
+
+      <TextBlock Grid.Row="5" Text="Rarity Intelligence™ • AMD_DriverMagic community build"
+                 HorizontalAlignment="Center" Foreground="#7C8DA5" FontSize="11" Margin="0,10,0,0"/>
     </Grid>
+  </Grid>
 </Window>
 '@
 #endregion
@@ -550,16 +674,38 @@ $btnCheckDeps = $window.FindName('btnCheckDeps')
 $btnWin7      = $window.FindName('btnWin7')
 $btnDrivers   = $window.FindName('btnDrivers')
 $txtLog       = $window.FindName('txtLog')
+$txtTitle     = $window.FindName('txtTitle')
 
 $script:txtLogControl = $txtLog
 $txtRoot.Text = $InitialRootPath
 
-# Ensure log never exceeds 50% of window height
+# Title strobe start
+try {
+    $sb = $window.Resources['TitleStrobe']
+    if ($sb -is [System.Windows.Media.Animation.Storyboard]) {
+        $sb = $sb.Clone()  # avoid Frozen resource issues
+        [System.Windows.Media.Animation.Storyboard]::SetTarget($sb, $txtTitle)
+        $sb.Begin($txtTitle)  # scope to element
+    }
+} catch {}
+try {
+    if (-not $sb) {
+        $da = New-Object System.Windows.Media.Animation.DoubleAnimation
+        $da.From = 0.85
+        $da.To = 1.0
+        $da.Duration = [System.Windows.Duration]::new([TimeSpan]::FromSeconds(1.8))
+        $da.AutoReverse = $true
+        $da.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+        $txtTitle.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $da)
+    }
+} catch {}
+
+# Cap log to 50% height
 $setLogCap = {
     param($w,$t)
     try {
         $half = [math]::Floor($w.ActualHeight * 0.5)
-        if ($half -lt 200) { $half = 200 }
+        if ($half -lt 220) { $half = 220 }
         $t.MaxHeight = $half
     } catch {}
 }
@@ -590,6 +736,7 @@ $txtCustom.AddHandler([System.Windows.UIElement]::LostFocusEvent, [System.Window
 
 # Buttons
 $btnCheckDeps.Add_Click({ if (Ensure-Dependencies) { [System.Windows.MessageBox]::Show('All dependencies OK.', 'Success', 'OK', 'Information') | Out-Null } else { [System.Windows.MessageBox]::Show('Dependency check failed. See log.', 'Error', 'OK', 'Error') | Out-Null } })
+$btnWin7.Add_Click({ Show-Win7SupportWindow })
 
 # ===== Core patch job (rehydrates functions in background) =====
 function Start-CorePatchJob {
@@ -688,7 +835,6 @@ function Start-CorePatchJob {
             }
         }
         Write-Log "Patching completed." "Success"
-        # Summaries back to GUI
         Write-Output @{ Type='Summary'; PatchedINFs=$patchedINFs; PatchedManifests=$patchedMans }
     } -ArgumentList $RootPath,$Target,$CustomDecText,$PatchManFlag,$script:SessionID,$script:BackupBase,$funcs | Out-Null
 }
@@ -719,17 +865,16 @@ $btnPatch.Add_Click({
             $window.IsEnabled = $true
             [System.Windows.MessageBox]::Show('Operation complete. Check logs.', 'Done', 'OK', 'Information') | Out-Null
 
-            # Open-folder prompts
             try {
                 if ($summary -and $summary.PatchedINFs -and $summary.PatchedINFs.Count -gt 0) {
-                    $resp = [System.Windows.MessageBox]::Show(("Open INF folder?" ), 'INF Patched', 'YesNo', 'Question')
+                    $resp = [System.Windows.MessageBox]::Show("Open INF folder?", 'INF Patched', 'YesNo', 'Question')
                     if ($resp -eq 'Yes') {
                         $first = [string]$summary.PatchedINFs[0]
                         Start-Process explorer.exe "/select,`"$first`""
                     }
                 }
                 if ($summary -and $summary.PatchedManifests -and $summary.PatchedManifests.Count -gt 0) {
-                    $resp2 = [System.Windows.MessageBox]::Show(("Open manifest folder?" ), 'Manifest Patched', 'YesNo', 'Question')
+                    $resp2 = [System.Windows.MessageBox]::Show("Open manifest folder?", 'Manifest Patched', 'YesNo', 'Question')
                     if ($resp2 -eq 'Yes') {
                         $firstM = [string]$summary.PatchedManifests[0]
                         Start-Process explorer.exe "/select,`"$firstM`""
@@ -742,6 +887,7 @@ $btnPatch.Add_Click({
 })
 
 $btnRevert.Add_Click({
+    if ([string]::IsNullOrWhiteSpace($txtRoot.Text) -or -not (Test-Path $txtRoot.Text)) { [System.Windows.MessageBox]::Show('Invalid driver root path.', 'Error', 'OK', 'Error') | Out-Null; return }
     $window.IsEnabled = $false
     Start-Job -ScriptBlock {
         param($RootPath)
@@ -776,8 +922,6 @@ $btnRevert.Add_Click({
     })
     $timer.Start()
 })
-
-$btnWin7.Add_Click({ Show-Win7SupportWindow })
 
 Write-Log "AMD INF Patcher GUI Loaded." "Info"
 if (-not (Ensure-Dependencies)) { [System.Windows.MessageBox]::Show('Critical dependency missing. App may not function.', 'Warning', 'OK', 'Exclamation') | Out-Null }
