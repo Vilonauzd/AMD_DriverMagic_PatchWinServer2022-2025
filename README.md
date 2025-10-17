@@ -2,6 +2,7 @@
 
 <img width="2409" height="1328" alt="image" src="https://github.com/user-attachments/assets/09286f7d-c961-4624-ab8e-4eabe33db6d9" />
 
+https://www.youtube.com/watch?v=8A1Bu26jm6g
 
 # AMD INF Patcher – Windows Server 2025 Ready 
 # **(09/29/25 - added experimental support for windows 7)**
