@@ -1,8 +1,9 @@
 # QVERT.NET AMD Server 2022 Adrenalin Patcher
 
 <p align="center">
-  <img width="1241" height="1010" alt="image" src="https://github.com/user-attachments/assets/b6734db9-6986-48d6-804d-5046f06e3d8c" />
+ <img width="2033" height="1621" alt="image" src="https://github.com/user-attachments/assets/89df49ed-1e8e-4f91-a746-9357a9e3a4fb" />
 </p>
+
 
 
 <p align="center">
