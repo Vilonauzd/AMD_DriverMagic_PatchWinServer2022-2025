@@ -16,7 +16,7 @@
 > **A zero-touch, guided, transactional AMD Adrenalin package patcher for Windows Server 2022.**  
 > Download it. Extract it. Prove it. Patch it. Validate it. Launch the correct installer.
 
-[Watch the project walkthrough](https://www.youtube.com/watch?v=8A1Bu26jm6g)
+[Watch the project walkthrough](https://www.youtube.com/watch?v=mYGCew1za5g)
 
 ---
 
