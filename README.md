@@ -1,8 +1,9 @@
 # QVERT.NET AMD Server 2022 Adrenalin Patcher
 
 <p align="center">
-  <img width="2409" height="1328" alt="QVERT.NET AMD Server 2022 Adrenalin Patcher" src="https://github.com/user-attachments/assets/09286f7d-c961-4624-ab8e-4eabe33db6d9" />
+  <img width="1241" height="1010" alt="image" src="https://github.com/user-attachments/assets/b6734db9-6986-48d6-804d-5046f06e3d8c" />
 </p>
+
 
 <p align="center">
   <img alt="Version 2.20.12" src="https://img.shields.io/badge/version-2.20.12-8E2432" />
