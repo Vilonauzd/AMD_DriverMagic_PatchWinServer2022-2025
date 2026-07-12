@@ -1,4 +1,4 @@
-# QVERT.NET AMD Server 2022 Adrenalin Patcher
+# QVERT.NET AMD Server 2022-2025 Adrenalin Patcher
 
 <p align="center">
  <img width="2033" height="1621" alt="image" src="https://github.com/user-attachments/assets/89df49ed-1e8e-4f91-a746-9357a9e3a4fb" />
