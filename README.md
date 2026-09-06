@@ -1,17 +1,15 @@
-# QVERT.NET AMD Server 2022-2025 Adrenalin Patcher
+# TurtleAMD — AMD Server 2022-2025 Adrenalin Patcher
 
 <p align="center">
- <img width="2033" height="1621" alt="image" src="https://github.com/user-attachments/assets/89df49ed-1e8e-4f91-a746-9357a9e3a4fb" />
+  <img src="assets/turtleamd-logo.png" alt="TurtleAMD logo" width="320" />
 </p>
-
-
 
 <p align="center">
   <img alt="Version 2.20.12" src="https://img.shields.io/badge/version-2.20.12-8E2432" />
   <img alt="Windows Server 2022" src="https://img.shields.io/badge/target-Windows%20Server%202022%20%7C%20Build%2020348-2FA772" />
   <img alt="PowerShell 5.1" src="https://img.shields.io/badge/PowerShell-5.1-4E86C7" />
   <img alt="WPF GUI" src="https://img.shields.io/badge/interface-WPF%20%7C%20no--console-131A27" />
-  <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-AAB5C4" />
+  <img alt="Personal Use License" src="https://img.shields.io/badge/license-Personal%20Use%20Only-8E2432" />
 </p>
 
 > **A zero-touch, guided, transactional AMD Adrenalin package patcher for Windows Server 2022.**  
@@ -23,7 +21,7 @@
 
 ## What This Is
 
-AMD consumer Radeon packages do not officially target Windows Server 2022. The QVERT.NET patcher prepares an AMD Adrenalin package, removes the package-level operating-system restrictions that block Server 2022, validates every write, and then launches only the correct top-level installer.
+AMD consumer Radeon packages do not officially target Windows Server 2022. The TurtleAMD patcher prepares an AMD Adrenalin package, removes the package-level operating-system restrictions that block Server 2022, validates every write, and then launches only the correct top-level installer.
 
 This is not a blind search-and-replace script with a dark theme.
 
@@ -73,7 +71,7 @@ The interface guides the operator through the correct sequence by pulsating the 
    Pulsates only after manifest patching, recursive INF patching, post-write validation, and rollback evidence all pass.
 
 9. **Donate via PayPal**  
-   An optional themed support window docks to the right side of the QVERT.NET app after the AMD installer launches, keeping clear of the fresh AMD setup wizard.
+   An optional themed support window docks to the right side of the TurtleAMD app after the AMD installer launches, keeping clear of the fresh AMD setup wizard.
 
 The workflow does not guess what the operator should do next. It shows them.
 
@@ -124,7 +122,7 @@ Themed surfaces cover:
 - final patch plan;
 - patch-complete validation summary;
 - top-level installer launch;
-- optional QVERT.NET donation handoff.
+- optional TurtleAMD donation handoff.
 
 The GUI is designed for a compiled, no-console host and keeps dialogs owned by the main application so they do not disappear behind Explorer.
 
@@ -405,11 +403,11 @@ No separate build helper is required.
 
 ## Optional Support
 
-This project is maintained and distributed free of charge.
+This project is maintained and distributed free of charge for personal, non-commercial use.
 
 Donations help support continued testing, AMD package-layout changes, regression fixes, and maintenance for the community.
 
-[Support QVERT.NET development through PayPal](https://www.paypal.com/donate/?business=marshall.jonathon@gmail.com&no_recurring=1&item_name=Donation)
+[Support TurtleAMD development through PayPal](https://www.paypal.com/donate/?business=marshall.jonathon@gmail.com&no_recurring=1&item_name=Donation)
 
 No recurring donation is requested.
 
@@ -424,13 +422,17 @@ This tool modifies third-party driver installation metadata for an unsupported o
 - Test driver releases before production deployment.
 - AMD package structures may change between releases.
 - Some Radeon software features may remain unavailable or behave differently on Windows Server.
-- QVERT.NET is not affiliated with or endorsed by AMD or Microsoft.
+- TurtleAMD is not affiliated with or endorsed by AMD or Microsoft.
 
 ---
 
 ## License
 
-MIT License — free for personal and commercial use.
+**TurtleAMD Personal Use License v1.0**
+
+Free for personal, non-commercial use. Commercial use requires prior written permission and a separate commercial license. Redistribution, mirroring, bundling, repackaging, sublicensing, resale, or distribution of modified builds is not permitted.
+
+See [`LICENSE`](LICENSE) for the complete terms.
 
 Community-built. Not endorsed by AMD or Microsoft.
 
@@ -438,7 +440,7 @@ Community-built. Not endorsed by AMD or Microsoft.
 
 ## Search Tags
 
-`AMD` `Radeon` `Adrenalin` `Windows Server 2022` `Build 20348` `INF Patcher` `OSCheck` `cccmanifest_64.json` `InstallManifest.json` `PowerShell 5.1` `WPF` `PowerEXE` `GPU Compute` `Homelab` `AI Server` `OpenCL` `DirectX` `Driver Package` `Transactional Patch` `Automatic Rollback` `7-Zip` `Chocolatey`
+`TurtleAMD` `AMD` `Radeon` `Adrenalin` `Windows Server 2022` `Build 20348` `INF Patcher` `OSCheck` `cccmanifest_64.json` `InstallManifest.json` `PowerShell 5.1` `WPF` `PowerEXE` `GPU Compute` `Homelab` `AI Server` `OpenCL` `DirectX` `Driver Package` `Transactional Patch` `Automatic Rollback` `7-Zip` `Chocolatey`
 
 ---
 
