@@ -1,6 +1,6 @@
 # TurtleAMD — AMD Server 2022-2025 Adrenalin Patcher
 <p align="center">
-  <img src="[assets/turtleamd-logo.png" alt="TurtleAMD logo](https://github.com/user-attachments/assets/da66b68f-868f-47b4-90a2-35b773490a02)" width="320" />
+  <img src="[[assets/turtleamd-logo.png](https://github.com/Vilonauzd/images/blob/71f7fa113fd621d033a8498e4be6e55df3664a5f/TurtleAMD.png)" width="320" />
 </p>
 
 <p align="center">
