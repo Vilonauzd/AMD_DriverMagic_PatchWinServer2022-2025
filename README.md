@@ -1,149 +1,128 @@
-# TurtleAMD — AMD Server 2022-2025 Adrenalin Patcher
-<img width="1280" height="1229" alt="TurtleAMD" src="https://github.com/user-attachments/assets/a1d3d044-f6ff-474e-8f1b-133eb3a66ba5" />
+# TurtleAMD
 
 <p align="center">
-  <img alt="Version 2.20.12" src="https://img.shields.io/badge/version-2.20.12-8E2432" />
-  <img alt="Windows Server 2022" src="https://img.shields.io/badge/target-Windows%20Server%202022%20%7C%20Build%2020348-2FA772" />
-  <img alt="PowerShell 5.1" src="https://img.shields.io/badge/PowerShell-5.1-4E86C7" />
-  <img alt="WPF GUI" src="https://img.shields.io/badge/interface-WPF%20%7C%20no--console-131A27" />
-  <img alt="Personal Use License" src="https://img.shields.io/badge/license-Personal%20Use%20Only-8E2432" />
+  <img src="assets/turtleamd-logo.png" alt="TurtleAMD" width="280" />
 </p>
 
-> **A zero-touch, guided, transactional AMD Adrenalin package patcher for Windows Server 2022.**  
-> Download it. Extract it. Prove it. Patch it. Validate it. Launch the correct installer.
+<p align="center">
+  <strong>Native AMD compatibility tooling for Windows Server.</strong><br/>
+  Adrenalin today. A modular compatibility platform for Ryzen Master and xpertRaidUtility next.
+</p>
 
-[Watch the project walkthrough](https://www.youtube.com/watch?v=K_XjCHMmv-o)
+<p align="center">
+  <img alt="Native QA" src="https://img.shields.io/badge/native%20line-3.2.0%20QA-8E2432" />
+  <img alt=".NET 10" src="https://img.shields.io/badge/runtime-.NET%2010-512BD4" />
+  <img alt="WPF" src="https://img.shields.io/badge/UI-WPF-242B30" />
+  <img alt="Windows Server" src="https://img.shields.io/badge/target-Server%202022%20%7C%202025-2F7D61" />
+  <img alt="Transactional" src="https://img.shields.io/badge/patching-transactional-344047" />
+  <img alt="License" src="https://img.shields.io/badge/license-Personal%20Use%20Only-8E2432" />
+</p>
 
----
+> **Major architecture transition:** TurtleAMD has been rebuilt from the original PowerShell/WPF DriverMagic application into a native **C# / .NET 10 WPF** desktop platform. The proven Adrenalin JSON/INF behavior remains isolated as its own compatibility engine while UI, sidecars, installer, QA, and future AMD product modules live behind explicit subsystem boundaries.
 
-## What This Is
-
-AMD consumer Radeon packages do not officially target Windows Server 2022. The TurtleAMD patcher prepares an AMD Adrenalin package, removes the package-level operating-system restrictions that block Server 2022, validates every write, and then launches only the correct top-level installer.
-
-This is not a blind search-and-replace script with a dark theme.
-
-It is a full guided workflow with:
-
-- automatic package preparation;
-- bare-server dependency bootstrap;
-- operating-system and security preflight;
-- defensive JSON and INF parsing;
-- per-file backups;
-- transactional writes;
-- post-write rescanning;
-- automatic rollback on failure;
-- responsive background execution;
-- a complete themed WPF experience from download through launch.
-
-The current release is intentionally focused on **Windows Server 2022 build family 20348**.
+[Watch the TurtleAMD project walkthrough](https://www.youtube.com/watch?v=K_XjCHMmv-o)
 
 ---
 
-## The Workflow
+## Current status
 
-The interface guides the operator through the correct sequence by pulsating the next required action:
-
-1. **AMD Drivers**  
-   Opens the AMD driver page and watches the Downloads, Desktop, and application directories for an Adrenalin installer.
-
-2. **Prepare Installer**  
-   Selects the downloaded AMD executable, prepares an isolated extraction directory, resolves 7-Zip, and validates the extracted package root.
-
-3. **Preflight Report**  
-   Verifies the operating system, package layout, manifests, recursive INF scope, write access, signature posture, boot policy, reboot state, backup storage, and rollback readiness.
-
-4. **Close**  
-   Pulsates inside the completed preflight report to hand control back to the main workflow.
-
-5. **Patch All + Validate**  
-   Pulsates only after preflight has passed for the currently selected package root.
-
-6. **Continue to Patch**  
-   Pulsates at the caution gate before any vendor file is modified.
-
-7. **Patch All + Validate**  
-   Pulsates again inside the final transactional patch plan.
-
-8. **Launch Top-Level Setup.exe**  
-   Pulsates only after manifest patching, recursive INF patching, post-write validation, and rollback evidence all pass.
-
-9. **Donate via PayPal**  
-   An optional themed support window docks to the right side of the TurtleAMD app after the AMD installer launches, keeping clear of the fresh AMD setup wizard.
-
-The workflow does not guess what the operator should do next. It shows them.
-
----
-
-## Why It Is Different
-
-### Zero-Touch Package Preparation
-
-The patcher can start from the original downloaded AMD Adrenalin executable.
-
-It will:
-
-- use an existing 7-Zip installation when available;
-- validate that the resolved command is exactly one existing `7z.exe`;
-- bootstrap Chocolatey directly from its official HTTPS installer when 7-Zip is absent;
-- install 7-Zip through Chocolatey;
-- avoid any dependency on Winget;
-- extract into an isolated destination;
-- locate the real AMD package root;
-- validate the required package structure;
-- populate the root automatically for preflight.
-
-Internet access is required only for the AMD package download and, when necessary, the Chocolatey/7-Zip bootstrap.
-
-### Live Operating-System Status
-
-The main GUI includes a continuously pulsating operating-system pill that reads local registry metadata without WMI or CIM startup delay.
-
-| State | Meaning |
+| Component | Status |
 |---|---|
-| **Green** | Windows Server 2022 build family `20348` detected |
-| **Amber** | Windows detected, but the build is not the intended target |
-| **Red** | Windows product/build metadata could not be resolved |
+| Native C# / .NET 10 WPF application | **Active QA** |
+| Adrenalin manifest compatibility engine | **Implemented** |
+| Recursive AMD INF normalization | **Implemented** |
+| Transactional backup / rollback | **Implemented** |
+| Windows Server preflight | **Implemented** |
+| Embedded WebView2 AMD Drivers workflow | **Implemented** |
+| Integrated Files sidecar | **Implemented** |
+| In-app AMD download capture / progress | **Implemented** |
+| Validated Setup.exe handoff + optional download cleanup | **Implemented** |
+| Tray integration + TurtleAMD notifications | **Implemented** |
+| Traditional Windows installer / uninstall / upgrade path | **Implemented** |
+| Ryzen Master compatibility module | **Planned** |
+| xpertRaidUtility compatibility module | **Planned** |
 
-Hovering over the pill displays the full product name, version, display version, installation type, and target-build reference.
-
-### One Consistent WPF Experience
-
-The primary workflow no longer drops the operator into mismatched native confirmation boxes.
-
-Themed surfaces cover:
-
-- package-preparation confirmation;
-- package-ready handoff;
-- preflight findings;
-- patch caution;
-- final patch plan;
-- patch-complete validation summary;
-- top-level installer launch;
-- optional TurtleAMD donation handoff.
-
-The GUI is designed for a compiled, no-console host and keeps dialogs owned by the main application so they do not disappear behind Explorer.
-
-### Responsive by Design
-
-Long-running work does not execute on the WPF UI thread.
-
-Package extraction, preflight, recursive patching, validation, rollback, and revert operations run through background jobs with:
-
-- live phase text;
-- elapsed time;
-- indeterminate progress;
-- batched log updates;
-- safe cancellation only where interruption cannot corrupt files;
-- dispatcher-level exception capture;
-- persistent logging.
-
-The application remains visibly alive while the real work is happening.
+The native 3.x line is still being exercised against real AMD packages and Windows Server systems before it is promoted as the repository's release artifact.
 
 ---
 
-## Exact Package Targets
+## From DriverMagic to TurtleAMD
 
-The patcher validates and processes the canonical AMD package structure:
+The original AMD INF Patcher / DriverMagic project proved the workflow in PowerShell. The native port preserves those production semantics while changing the engineering model:
+
+```text
+AMD DriverMagic / AMD INF Patcher
+PowerShell + WPF/XAML
+        │
+        │ production behavior recovered and preserved
+        ▼
+TurtleAMD 3.x
+Native C# / .NET 10 + WPF
+        │
+        ├── Adrenalin compatibility module      [implemented]
+        ├── shared transaction / validation platform
+        ├── WebView2 + Files sidecar infrastructure
+        ├── installer / tray / notifications / QA
+        ├── Ryzen Master compatibility module   [planned]
+        └── xpertRaidUtility module              [planned]
+```
+
+The port was done for **maintainability, isolation, testability, and extensibility** — not source-code secrecy.
+
+See [Migration Notes](docs/MIGRATION.md) and [Native Architecture](docs/ARCHITECTURE.md).
+
+---
+
+## Native operator experience
+
+TurtleAMD 3.x is designed as a single workflow surface instead of a chain of external browser, Explorer, console, and installer windows.
+
+### Attached WebView2 + Files sidecar
+
+Clicking **AMD Drivers** expands an attached WebView2 sidecar. The main cockpit stays anchored while the application expands to the right. Browser downloads are captured by TurtleAMD, progress is shown in-app, and completed installers can be handed directly into package preparation. The same dock switches to an integrated Files view for installer and package selection.
+
+<p align="center">
+  <img src="assets/screenshots/native-qa3/native-sidecar-gallery.jpg" alt="TurtleAMD WebView2 and Files sidecar gallery" width="950" />
+</p>
+
+### Critical workflow lock
+
+Extraction, preflight, patching, validation, rollback, and other critical steps own the UI while active. The underlying cockpit is dimmed and disabled so conflicting state cannot be created. Status events are queued and paced for readability; the backend operation itself is **not intentionally slowed**.
+
+<p align="center">
+  <img src="assets/screenshots/native-qa3/native-workflow-gallery.jpg" alt="TurtleAMD preflight and patch workflow gallery" width="950" />
+</p>
+
+---
+
+## Preflight: prove it before touching vendor files
+
+Preflight is an execution gate, not a decorative checklist. It checks, among other things:
+
+- administrator context
+- Windows Server product/build
+- package layout and top-level `Setup.exe`
+- all three required JSON manifests
+- recursive driver INF scope
+- current/past patch evidence
+- package and backup/log write access
+- free disk space
+- installer process state
+- 7-Zip and PnPUtil availability
+- BCD and test-signing state
+- Secure Boot posture
+- Memory Integrity / HVCI where queryable
+- reboot state
+- signature consequences
+- rollback readiness
+
+`PASS` findings are green. Warnings, informational findings, and blockers remain semantically distinct. A blocker prevents patch execution.
+
+---
+
+## Transactional Adrenalin compatibility engine
+
+The implemented Adrenalin module targets the canonical AMD package structure:
 
 ```text
 <AMD package root>\
@@ -158,289 +137,190 @@ The patcher validates and processes the canonical AMD package structure:
         └── **\*.inf
 ```
 
-The package root must contain the top-level `Setup.exe`, all three required manifests, and the recursive driver tree.
+### Manifest behavior
 
-The patcher never launches a lower-level installer executable.
+The manifest engine targets the three required AMD JSON manifests, finds exact `OSCheck` targets, preserves unrelated JSON and adjacent values such as `OSCheckMinVer`, handles scalar/array forms, removes duplicate required compatibility entries, and adds the required Windows Server compatibility metadata exactly once before reparsing and rescanning.
 
----
+### INF behavior
 
-## Manifest Engine
+The INF engine recursively scans `Packages\Drivers\**\*.inf`, normalizes targeted manufacturer mappings to `NTamd64`, normalizes decorated `.NTamd64.*` model sections, preserves unrelated content/comments/encoding/newlines, and validates every write plus the final package.
 
-The manifest engine defensively scans every exact `OSCheck` property in the required JSON files.
+### Transaction / recovery behavior
 
-It handles:
-
-- scalar and array forms;
-- duplicate keys and repeated blocks;
-- case variation;
-- changing AMD build-specific identifiers;
-- existing compatibility entries that must be preserved;
-- duplicate Server 2022 entries that must be normalized;
-- adjacent keys such as `OSCheckMinVer` that have separate semantics and must not be rewritten accidentally.
-
-The canonical Server 2022 compatibility identifier is appended exactly once where required:
+Before a vendor file is replaced, TurtleAMD creates a hashed backup beside the original:
 
 ```text
-*-*-10.0.20348.0-Yes-*-Yes
+<file>.bak_yyyyMMdd_HHmmss_<sha-prefix>
 ```
 
-The engine reparses JSON after modification and performs a full post-write rescan before declaring success.
-
----
-
-## Recursive INF Engine
-
-Every INF beneath the driver tree is inspected:
+Execution is intentionally staged:
 
 ```text
-Packages\Drivers\**\*.inf
+Discover
+   ↓
+Preflight
+   ↓
+Patch Plan
+   ↓
+Backup
+   ↓
+Transactional Write
+   ↓
+Post-write Rescan
+   ↓
+Full-package Validation
+   ↓
+SUCCESS  ──────────────┐
+   │                   │
+   └─ failure ─→ reverse-order rollback
 ```
 
-The patcher does not assume that AMD will always use the same manufacturer token or model-section name.
+The manual **Revert All** path restores compatible backup sets after the fact.
 
-It dynamically preserves and normalizes structures such as:
-
-```ini
-%ATI% = ATI.Mfg, NTamd64.10.0...
-```
-
-to:
-
-```ini
-%ATI% = ATI.Mfg, NTamd64
-```
-
-and:
-
-```ini
-[ATI.Mfg.NTamd64.10.0...]
-```
-
-to:
-
-```ini
-[ATI.Mfg.NTamd64]
-```
-
-It also handles equivalent structures such as:
-
-```ini
-%ManufacturerName%=AMD, NTAMD64.10.0...
-[AMD.NTAMD64.10.0...]
-```
-
-while preserving:
-
-- the original manufacturer token;
-- the original model-section identifier;
-- unrelated INF content;
-- comments;
-- indentation;
-- newline style;
-- source encoding.
-
-Post-write validation confirms that the intended mappings changed and no unsupported decorated headers remain in the matched scope.
+See [Adrenalin Module](docs/ADRENALIN-MODULE.md) and [Safety / Rollback](docs/SAFETY-AND-ROLLBACK.md).
 
 ---
 
-## Preflight: Prove It Before Touching It
+## Validated AMD Setup handoff
 
-Preflight classifies findings as pass, caution, or blocker and checks:
+TurtleAMD offers AMD Setup **only after** patching and complete recursive validation succeed. The launch gate can optionally remove the **original downloaded AMD installer** after the validated extracted `Setup.exe` starts; the fresh extraction and recovery data are not deleted by that option.
 
-- administrator elevation;
-- Windows product and build;
-- expected Server 2022 build family;
-- required package layout;
-- top-level `Setup.exe`;
-- both `cccmanifest_64.json` files;
-- `InstallManifest.json`;
-- recursive INF discovery;
-- JSON parse validity;
-- target-file write access;
-- backup/log path write access;
-- available disk space;
-- pending reboot state;
-- test-signing posture;
-- Secure Boot posture;
-- HVCI / Memory Integrity posture;
-- relevant driver-signature state;
-- rollback readiness.
+<p align="center">
+  <img src="assets/screenshots/native-qa3/native-amd-handoff-gallery.jpg" alt="TurtleAMD validated AMD Setup handoff gallery" width="950" />
+</p>
 
-Safe, deterministic remediation is built in:
-
-- resolve a selected child directory back to the actual package root;
-- discover one valid root below the selected directory or `C:\AMD`;
-- create and validate backup/log storage;
-- clear read-only attributes only from files the patcher must modify.
-
-The patcher does **not** silently:
-
-- change BCD settings;
-- disable Secure Boot;
-- disable Memory Integrity;
-- fabricate missing vendor files;
-- rewrite malformed JSON;
-- bypass an unresolved blocker.
+The QA sequence shown above reaches the real AMD Adrenalin installer after TurtleAMD's validation gate.
 
 ---
 
-## Transactional Safety
+## Traditional Windows installer
 
-Every changed file is backed up beside the original before replacement:
+The native application is packaged through a normal Windows setup experience:
+
+- Program Files installation
+- selectable destination
+- EULA acceptance
+- Start Menu shortcut
+- optional Desktop shortcut
+- Programs & Features / Installed Apps registration
+- upgrade / clean-reinstall handling
+- normal uninstall
+- launch-after-install option
+- TurtleAMD application, installer, shortcut, and tray branding
+
+<p align="center">
+  <img src="assets/screenshots/native-qa3/native-installer-gallery.jpg" alt="TurtleAMD installer gallery" width="950" />
+</p>
+
+See [Installation](docs/INSTALLATION.md) and the [complete native QA gallery](docs/GALLERY.md).
+
+---
+
+## Native architecture
 
 ```text
-<original file>.bak_yyyyMMdd_HHmmss_<8-character-SHA256>
+TurtleAMD
+│
+├── App / WPF shell
+│   ├── cockpit + workflow state
+│   ├── WebView2 sidecar
+│   ├── Files sidecar
+│   ├── tray + owned notifications
+│   ├── dialogs / progress / completion gates
+│   └── installer handoff
+│
+├── Core / shared platform
+│   ├── package discovery
+│   ├── preflight primitives
+│   ├── patch plans
+│   ├── transactions / backups / rollback
+│   ├── validation primitives
+│   └── logging / evidence
+│
+├── Compatibility modules
+│   ├── Adrenalin         [implemented]
+│   ├── RyzenMaster       [planned]
+│   └── xpertRaidUtility  [planned]
+│
+├── QA
+│   └── native regression harness
+│
+└── Installer
+    └── install / upgrade / uninstall / shortcuts / EULA
 ```
 
-The patch engine then:
+> **Product-specific patch logic belongs in its product module. New AMD compatibility work must not accumulate inside the stable Adrenalin engine.**
 
-1. reads the original while preserving encoding;
-2. builds the intended modification in memory;
-3. creates a hashed backup;
-4. writes transactionally;
-5. reparses or rescans the written file;
-6. validates the complete package;
-7. rolls the session back automatically if any write or validation fails.
-
-The **Revert All** workflow recursively locates recoverable backup files and restores the original vendor content.
-
-Persistent logs are stored under:
-
-```text
-C:\RepairLogs\amd_server2022_patch_*.log
-```
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## Patch Completion Evidence
+## Upcoming modules
 
-The completion window reports:
+### Ryzen Master compatibility — planned
 
-- manifests scanned and changed;
-- `OSCheck` blocks found and additions made;
-- INF files scanned, matched, and changed;
-- manufacturer mappings normalized;
-- decorated `NTamd64` section headers changed;
-- validated top-level `Setup.exe` path.
+Ryzen Master can reject Windows Server with an operating-system compatibility gate even when the underlying machine is otherwise capable of running the product. TurtleAMD will handle this as a separate module with its own product/version detection, preflight, exact compatibility-gate discovery, patch plan, recovery evidence, validation, and rollback.
 
-Only after all validation passes does the app offer:
+No Ryzen Master code will run during an Adrenalin workflow, and Ryzen Master will not reuse the INF/manifest rewrite logic merely for convenience.
 
-```text
-Launch Top-Level Setup.exe
-```
+### xpertRaidUtility compatibility — planned / analysis required
 
-That distinction matters. AMD packages contain lower-level executables that can re-enter the unsupported operating-system path.
+xpertRaidUtility will follow the same module contract. Exact patch targets will only be documented after package/version-specific analysis establishes the compatibility barrier. The module will own its detection, patch scope, validation, evidence, and rollback independently of Adrenalin and Ryzen Master.
+
+See [ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
-## Requirements
+## Requirements / runtime direction
 
-- **Target OS:** Windows Server 2022, build family `20348`
-- **Interface:** Windows Server 2022 with WPF/.NET Framework support
-- **PowerShell:** Windows PowerShell 5.1
-- **Privileges:** Local administrator
-- **AMD package:** Current AMD Adrenalin installer executable
-- **Disk:** Enough free space for the downloaded package, isolated extraction, backups, and logs
-- **Internet:** AMD download; Chocolatey and 7-Zip bootstrap only when 7-Zip is not already installed
+Native QA currently targets:
 
-Driver-signature policy still applies after INF modification. The patcher reports the relevant security posture but does not silently weaken the operating system.
+- Windows x64
+- Windows Server 2022 / 2025 compatibility workflows
+- .NET 10 WPF application
+- self-contained application publishing
+- WebView2 Evergreen Runtime for embedded web content
+- local administrator for patch operations
+- enough disk space for download, fresh extraction, backups, and logs
 
----
+The normal native runtime does **not** depend on PowerShell as the application language.
 
-## Running the PowerShell Release
-
-Open an elevated Windows PowerShell 5.1 console:
-
-```powershell
-Set-Location "C:\Path\To\AMD_DriverMagic_PatchWinServer2022-2025"
-& .\AMD-INF-Patcher.ps1
-```
-
-Then follow the pulsating workflow in the application.
+Driver-signature policy still matters after INF modification. TurtleAMD reports relevant security posture but does not silently disable Secure Boot, Memory Integrity, or BCD integrity policy.
 
 ---
 
-## Compiled EXE Release
+## Repository notes
 
-The application is designed for compilation with **PowerEXE** using an execution posture equivalent to:
+The repository name is historical: `AMD_DriverMagic_PatchWinServer2022-2025`. The product identity is now **TurtleAMD**.
 
-- x64;
-- STA;
-- no visible console;
-- DPI aware;
-- require administrator;
-- long-path enabled.
-
-The code resolves its own application directory and does not depend on a console working directory.
-
-No separate build helper is required.
+The previous compiled `amd_inf.exe` was removed from the repository root while the native 3.x QA line is being finalized. Release binaries/installers should be published only after the native QA line is explicitly promoted. The complete PowerShell-era history remains available in Git history.
 
 ---
 
-## What It Changes — and What It Does Not
+## Documentation
 
-### It changes
-
-- AMD package JSON compatibility metadata;
-- AMD driver INF operating-system decorations;
-- only the specific files required to make the package recognize Server 2022.
-
-### It does not change
-
-- the Windows kernel;
-- AMD binary payloads;
-- firmware;
-- GPU VBIOS;
-- Windows security policy;
-- Secure Boot configuration;
-- HVCI configuration;
-- BCD configuration.
-
----
-
-## Optional Support
-
-This project is maintained and distributed free of charge for personal, non-commercial use.
-
-Donations help support continued testing, AMD package-layout changes, regression fixes, and maintenance for the community.
-
-[Support TurtleAMD development through PayPal](https://www.paypal.com/donate/?business=marshall.jonathon@gmail.com&no_recurring=1&item_name=Donation)
-
-No recurring donation is requested.
+- [Native Architecture](docs/ARCHITECTURE.md)
+- [Adrenalin Compatibility Module](docs/ADRENALIN-MODULE.md)
+- [Migration from DriverMagic](docs/MIGRATION.md)
+- [Safety and Rollback](docs/SAFETY-AND-ROLLBACK.md)
+- [Installation / Upgrade / Uninstall](docs/INSTALLATION.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Complete Native QA Gallery](docs/GALLERY.md)
 
 ---
 
 ## Disclaimer
 
-This tool modifies third-party driver installation metadata for an unsupported operating-system scenario.
-
-- Use it at your own risk.
-- Maintain a system backup or recovery path.
-- Test driver releases before production deployment.
-- AMD package structures may change between releases.
-- Some Radeon software features may remain unavailable or behave differently on Windows Server.
-- TurtleAMD is not affiliated with or endorsed by AMD or Microsoft.
+TurtleAMD modifies third-party installation metadata for unsupported operating-system scenarios. Use it at your own risk, maintain a system backup/recovery path, and test AMD releases before production deployment. AMD package structures and compatibility gates can change between versions. TurtleAMD is not affiliated with or endorsed by AMD or Microsoft.
 
 ---
 
 ## License
 
-**TurtleAMD Personal Use License v1.0**
-
-Free for personal, non-commercial use. Commercial use requires prior written permission and a separate commercial license. Redistribution, mirroring, bundling, repackaging, sublicensing, resale, or distribution of modified builds is not permitted.
-
-See [`LICENSE`](LICENSE) for the complete terms.
-
-Community-built. Not endorsed by AMD or Microsoft.
-
----
-
-## Search Tags
-
-`TurtleAMD` `AMD` `Radeon` `Adrenalin` `Windows Server 2022` `Build 20348` `INF Patcher` `OSCheck` `cccmanifest_64.json` `InstallManifest.json` `PowerShell 5.1` `WPF` `PowerEXE` `GPU Compute` `Homelab` `AI Server` `OpenCL` `DirectX` `Driver Package` `Transactional Patch` `Automatic Rollback` `7-Zip` `Chocolatey`
+**TurtleAMD Personal Use License** — free for personal, non-commercial use. Commercial use requires prior written permission and a separate commercial license. See [`LICENSE`](LICENSE) for the complete repository terms.
 
 ---
 
 <p align="center">
-  <strong>Because Server 2022 can run the hardware. The installer just needed to be convinced.</strong>
+  <strong>TurtleAMD — prove the package, patch only what is required, validate everything, then hand control back to AMD Setup.</strong>
 </p>
