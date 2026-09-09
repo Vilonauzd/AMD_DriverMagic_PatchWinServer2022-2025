@@ -82,7 +82,7 @@ TurtleAMD 3.x is designed as a single workflow surface instead of a chain of ext
 Clicking **AMD Drivers** expands an attached WebView2 sidecar. The main cockpit stays anchored while the application expands to the right. Browser downloads are captured by TurtleAMD, progress is shown in-app, and completed installers can be handed directly into package preparation. The same dock switches to an integrated Files view for installer and package selection.
 
 <p align="center">
-  <img src="assets/screenshots/native-qa3/native-sidecar-gallery.jpg" alt="TurtleAMD WebView2 and Files sidecar gallery" width="950" />
+  <img src="assets/screenshots/native-qa3/2026-09-06%2022_30_37-TurtleAMD%20_%20AMD%20INF%20Patcher.png" alt="TurtleAMD WebView2 sidecar with AMD download in progress" width="950" />
 </p>
 
 ### Critical workflow lock
@@ -90,7 +90,7 @@ Clicking **AMD Drivers** expands an attached WebView2 sidecar. The main cockpit 
 Extraction, preflight, patching, validation, rollback, and other critical steps own the UI while active. The underlying cockpit is dimmed and disabled so conflicting state cannot be created. Status events are queued and paced for readability; the backend operation itself is **not intentionally slowed**.
 
 <p align="center">
-  <img src="assets/screenshots/native-qa3/native-workflow-gallery.jpg" alt="TurtleAMD preflight and patch workflow gallery" width="950" />
+  <img src="assets/screenshots/native-qa3/2026-09-06%2022_31_42-TurtleAMD%20_%20AMD%20INF%20Patcher.png" alt="TurtleAMD transactional patch confirmation gate" width="950" />
 </p>
 
 ---
@@ -186,7 +186,11 @@ See [Adrenalin Module](docs/ADRENALIN-MODULE.md) and [Safety / Rollback](docs/SA
 TurtleAMD offers AMD Setup **only after** patching and complete recursive validation succeed. The launch gate can optionally remove the **original downloaded AMD installer** after the validated extracted `Setup.exe` starts; the fresh extraction and recovery data are not deleted by that option.
 
 <p align="center">
-  <img src="assets/screenshots/native-qa3/native-amd-handoff-gallery.jpg" alt="TurtleAMD validated AMD Setup handoff gallery" width="950" />
+  <img src="assets/screenshots/native-qa3/2026-09-06%2022_32_07-TurtleAMD%20_%20AMD%20INF%20Patcher.png" alt="TurtleAMD validated AMD Setup handoff" width="950" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/native-qa3/2026-09-06%2022_32_41-TurtleAMD%20_%20AMD%20INF%20Patcher5.png" alt="AMD Adrenalin installer reached after TurtleAMD validation" width="950" />
 </p>
 
 The QA sequence shown above reaches the real AMD Adrenalin installer after TurtleAMD's validation gate.
@@ -209,7 +213,7 @@ The native application is packaged through a normal Windows setup experience:
 - TurtleAMD application, installer, shortcut, and tray branding
 
 <p align="center">
-  <img src="assets/screenshots/native-qa3/native-installer-gallery.jpg" alt="TurtleAMD installer gallery" width="950" />
+  <img src="assets/screenshots/native-qa3/2026-09-06%2022_35_29-Setup%20-%20TurtleAMD.png" alt="TurtleAMD traditional Windows setup wizard" width="950" />
 </p>
 
 See [Installation](docs/INSTALLATION.md) and the [complete native QA gallery](docs/GALLERY.md).
