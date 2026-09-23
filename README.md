@@ -21,7 +21,8 @@
 > **Major architecture transition:** TurtleAMD has been rebuilt from the original PowerShell/WPF DriverMagic application into a native **C# / .NET 10 WPF** desktop platform. The proven Adrenalin JSON/INF behavior remains isolated as its own compatibility engine while UI, sidecars, installer, QA, and future AMD product modules live behind explicit subsystem boundaries.
 
 [Watch the TurtleAMD project walkthrough](https://www.youtube.com/watch?v=K_XjCHMmv-o)
-[Watch the TurtleAMD project RyzenMaster walkthrough]([https://www.youtube.com/watch?v=K_XjCHMmv-o](https://www.youtube.com/watch?v=iJAHBpNp2BI))
+#########################################################################################
+[Watch the TurtleAMD project RyzenMaster walkthrough]([https://www.youtube.com/watch?v=K_XjCHMmv-o](https://www.youtube.com/watch?v=iJAHBpNp2BI)
 
 ---
 
