@@ -1,7 +1,7 @@
 # TurtleAMD
 
 <p align="center">
-<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/f9414bde-7896-40f4-96d9-6f6e2679d461" />
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/c9c9d238-f041-4d17-8726-a741bcfc6209" />
 </p>
 
 <p align="center">
