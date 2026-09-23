@@ -1,7 +1,7 @@
 # TurtleAMD
 
 <p align="center">
-  <img src="https://github.com/Vilonauzd/AMD_DriverMagic_PatchWinServer2022-2025/blob/431ae61fbffd62a8ab6aa9e330a9f6d7c3340374/assets/TurtleAMD.png" />
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/f9414bde-7896-40f4-96d9-6f6e2679d461" />
 </p>
 
 <p align="center">
