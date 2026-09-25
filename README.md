@@ -41,8 +41,8 @@
 | Validated Setup.exe handoff + optional download cleanup | **Implemented** |
 | Tray integration + TurtleAMD notifications | **Implemented** |
 | Traditional Windows installer / uninstall / upgrade path | **Implemented** |
-| Ryzen Master compatibility module | **Planned** |
-| xpertRaidUtility compatibility module | **Planned** |
+| Ryzen Master compatibility module | **Implemented** |
+| xpertRaidUtility compatibility module | **In progress** |
 
 The native 3.x line is still being exercised against real AMD packages and Windows Server systems before it is promoted as the repository's release artifact.
 
