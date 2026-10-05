@@ -263,7 +263,7 @@ See [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Upcoming modules
 
-### Ryzen Master compatibility — planned
+### Ryzen Master compatibility — **COMPLETE** (latest release)
 
 Ryzen Master can reject Windows Server with an operating-system compatibility gate even when the underlying machine is otherwise capable of running the product. TurtleAMD will handle this as a separate module with its own product/version detection, preflight, exact compatibility-gate discovery, patch plan, recovery evidence, validation, and rollback.
 
